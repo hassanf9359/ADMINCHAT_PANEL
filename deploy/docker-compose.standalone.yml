@@ -1,0 +1,61 @@
+# ============================================================
+# ADMINCHAT Panel - Standalone (Backend + Frontend only)
+# ============================================================
+# Use this when you ALREADY have PostgreSQL and Redis running.
+# Only deploys the ADMINCHAT application containers.
+#
+# Prerequisites:
+#   - External PostgreSQL 16+ accessible
+#   - External Redis 7+ accessible
+#
+# Usage:
+#   cp .env.example .env  # Configure DATABASE_URL and REDIS_URL
+#   docker compose -f docker-compose.standalone.yml up -d
+#
+# Update:
+#   docker compose -f docker-compose.standalone.yml pull
+#   docker compose -f docker-compose.standalone.yml up -d
+# ============================================================
+
+services:
+  backend:
+    image: ghcr.io/fxxkrlab/adminchat_panel-backend:${IMAGE_TAG:-latest}
+    container_name: adminchat-backend
+    restart: unless-stopped
+    env_file: .env
+    # ----- Volume: Named Volume (default) -----
+    volumes:
+      - adminchat_media:/app/media
+    # ----- Volume: Bind Mount (uncomment below, comment above) -----
+    # volumes:
+    #   - ./data/media:/app/media
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - adminchat
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    image: ghcr.io/fxxkrlab/adminchat_panel-frontend:${IMAGE_TAG:-latest}
+    container_name: adminchat-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - adminchat
+
+volumes:
+  adminchat_media:
+
+networks:
+  adminchat:
+    driver: bridge
+  # ----- Connect to external network (uncomment if PG/Redis are in another compose) -----
+  # external_net:
+  #   external: true
+  #   name: your_existing_network_name  # e.g., apisix_default

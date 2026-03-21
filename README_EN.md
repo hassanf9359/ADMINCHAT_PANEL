@@ -126,21 +126,32 @@ flowchart LR
 ## Quick Start
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/ADMINCHAT_PANEL.git
-cd ADMINCHAT_PANEL
+# Clone the repository
+git clone https://github.com/fxxkrlab/ADMINCHAT_PANEL.git
+cd ADMINCHAT_PANEL/deploy
 
-# 2. Configure environment
+# Configure environment
 cp .env.example .env
-# Edit .env with your database passwords, bot tokens, JWT secrets, etc.
+nano .env  # Set passwords, bot tokens, domain, etc.
 
-# 3. Start all services
-docker compose up -d
+# One-click start (includes PostgreSQL + Redis + Nginx)
+docker compose -f docker-compose.full.yml up -d
 
-# 4. Access the panel
-# Open http://localhost (or your configured domain)
+# Visit http://server-ip
 # Default login: admin / (see INIT_ADMIN_PASSWORD in .env)
 ```
+
+## Installation Methods
+
+See full deployment docs at [`deploy/README.md`](deploy/README.md)
+
+| Method | File | Use Case |
+|--------|------|----------|
+| Docker Run | [`deploy/docker-run.sh`](deploy/docker-run.sh) | Have PG+Redis, deploy app only |
+| Compose Standalone | [`deploy/docker-compose.standalone.yml`](deploy/docker-compose.standalone.yml) | Have PG+Redis, Compose managed |
+| Compose Full Stack | [`deploy/docker-compose.full.yml`](deploy/docker-compose.full.yml) | Fresh server, deploy everything |
+
+Each method supports both **Named Volumes** (Docker-managed) and **Bind Mounts** (host directory mapping), switchable via comments in yml files.
 
 ## Project Structure
 

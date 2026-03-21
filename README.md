@@ -131,21 +131,32 @@ flowchart LR
 ## 快速开始
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/your-org/ADMINCHAT_PANEL.git
-cd ADMINCHAT_PANEL
+# 克隆仓库
+git clone https://github.com/fxxkrlab/ADMINCHAT_PANEL.git
+cd ADMINCHAT_PANEL/deploy
 
-# 2. 配置环境变量
+# 配置环境变量
 cp .env.example .env
-# 编辑 .env 填写数据库密码、Bot Token、JWT 密钥等
+nano .env  # 修改密码、Bot Token、域名等
 
-# 3. 启动服务
-docker compose up -d
+# 一键启动 (包含 PostgreSQL + Redis + Nginx)
+docker compose -f docker-compose.full.yml up -d
 
-# 4. 访问面板
-# 打开 http://localhost (或你配置的域名)
+# 访问 http://服务器IP
 # 默认账号: admin / 密码见 .env 中的 INIT_ADMIN_PASSWORD
 ```
+
+## 安装方式
+
+详细部署文档见 [`deploy/README.md`](deploy/README.md)
+
+| 方式 | 文件 | 适用场景 |
+|------|------|---------|
+| Docker Run | [`deploy/docker-run.sh`](deploy/docker-run.sh) | 已有 PG+Redis，只部署应用 |
+| Compose 独立版 | [`deploy/docker-compose.standalone.yml`](deploy/docker-compose.standalone.yml) | 已有 PG+Redis，Compose 管理 |
+| Compose 一键版 | [`deploy/docker-compose.full.yml`](deploy/docker-compose.full.yml) | 全新服务器，一键全部 |
+
+每种方式都支持 **Named Volume**（Docker 管理）和 **Bind Mount**（映射宿主机目录），在 yml 文件注释中切换。
 
 ## 项目结构
 

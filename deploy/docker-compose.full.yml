@@ -1,0 +1,180 @@
+# ============================================================
+# ADMINCHAT Panel - Full Stack (All-in-One)
+# ============================================================
+# Deploys everything: Backend + Frontend + PostgreSQL + Redis + Nginx
+# Perfect for fresh servers with nothing pre-installed.
+#
+# Usage:
+#   cp .env.example .env  # Configure passwords and settings
+#   docker compose -f docker-compose.full.yml up -d
+#
+# Update ADMINCHAT only (keep DB data):
+#   docker compose -f docker-compose.full.yml pull backend frontend
+#   docker compose -f docker-compose.full.yml up -d backend frontend
+#
+# ============================================================
+# CONFIGURATION GUIDE:
+#
+# Want to disable Nginx? (using your own reverse proxy)
+#   Comment out the entire "nginx" service block below, then
+#   expose backend port: uncomment "ports" under backend service.
+#
+# Want to use external PostgreSQL?
+#   1. Comment out the "postgres" service block
+#   2. Remove "postgres" from backend's depends_on
+#   3. Update DATABASE_URL in .env to point to your PG host
+#
+# Want to use external Redis?
+#   1. Comment out the "redis" service block
+#   2. Remove "redis" from backend's depends_on
+#   3. Update REDIS_URL in .env to point to your Redis host
+#
+# Want bind mounts instead of named volumes? (for easy backup)
+#   Replace volume entries like:
+#     - adminchat_pgdata:/var/lib/postgresql/data
+#   With:
+#     - ./data/postgres:/var/lib/postgresql/data
+#   Do the same for redis and media volumes.
+# ============================================================
+
+services:
+
+  # ==================== APPLICATION ====================
+
+  backend:
+    image: ghcr.io/fxxkrlab/adminchat_panel-backend:${IMAGE_TAG:-latest}
+    container_name: adminchat-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    # ----- Named Volume (default, managed by Docker) -----
+    volumes:
+      - adminchat_media:/app/media
+    # ----- Bind Mount (uncomment below, comment above) -----
+    # volumes:
+    #   - ./data/media:/app/media
+    # ----- Expose port directly (if NOT using nginx service) -----
+    # ports:
+    #   - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - adminchat
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    image: ghcr.io/fxxkrlab/adminchat_panel-frontend:${IMAGE_TAG:-latest}
+    container_name: adminchat-frontend
+    restart: unless-stopped
+    # ----- Expose port directly (if NOT using nginx service) -----
+    # ports:
+    #   - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - adminchat
+
+  # ==================== DATABASE ====================
+  # Comment out this section if using external PostgreSQL
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: adminchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-adminchat}
+      POSTGRES_USER: ${POSTGRES_USER:-adminchat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    # ----- Named Volume (default) -----
+    volumes:
+      - adminchat_pgdata:/var/lib/postgresql/data
+    # ----- Bind Mount (uncomment below, comment above) -----
+    # volumes:
+    #   - ./data/postgres:/var/lib/postgresql/data
+    # ----- Expose port for external access (optional) -----
+    # ports:
+    #   - "5432:5432"
+    networks:
+      - adminchat
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-adminchat}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== CACHE ====================
+  # Comment out this section if using external Redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: adminchat-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    # ----- Named Volume (default) -----
+    volumes:
+      - adminchat_redisdata:/data
+    # ----- Bind Mount (uncomment below, comment above) -----
+    # volumes:
+    #   - ./data/redis:/data
+    # ----- Expose port for external access (optional) -----
+    # ports:
+    #   - "6379:6379"
+    networks:
+      - adminchat
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== REVERSE PROXY ====================
+  # Comment out this section if using your own reverse proxy
+  # (APISIX, Caddy, Traefik, etc.)
+  #
+  # If disabled, uncomment "ports" on backend and frontend services above.
+
+  nginx:
+    image: nginx:alpine
+    container_name: adminchat-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      # - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # ----- For HTTPS (uncomment and provide certs) -----
+      # - ./certs/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      # - ./certs/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - adminchat
+
+# ==================== VOLUMES ====================
+# Named volumes (managed by Docker, use `docker volume ls` to see them)
+# For bind mounts: comment these out and use ./data/xxx paths above
+
+volumes:
+  adminchat_pgdata:
+    name: adminchat_pgdata
+  adminchat_redisdata:
+    name: adminchat_redisdata
+  adminchat_media:
+    name: adminchat_media
+
+# ==================== NETWORKS ====================
+networks:
+  adminchat:
+    driver: bridge
+    name: adminchat
+  # ----- Connect to existing external network -----
+  # Uncomment and add "external_net" to services that need it
+  # external_net:
+  #   external: true
+  #   name: your_network_name
