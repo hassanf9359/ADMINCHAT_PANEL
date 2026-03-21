@@ -82,20 +82,24 @@ async def create_bot(
         )
 
     # Validate token with Telegram
+    temp_bot = None
     try:
         temp_bot = AiogramBot(token=body.token)
         me = await temp_bot.get_me()
-        await temp_bot.session.close()
     except TelegramUnauthorizedError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid bot token: Telegram rejected it",
         )
     except Exception as exc:
+        logger.exception("Failed to validate bot token")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to validate bot token: {exc}",
         )
+    finally:
+        if temp_bot:
+            await temp_bot.session.close()
 
     # Save to DB
     bot_record = Bot(
