@@ -1,0 +1,35 @@
+# ADMINCHAT Panel - Caddy Reverse Proxy
+# Caddy automatically handles HTTPS certificate via Let's Encrypt.
+#
+# Usage: Replace {$SITE_ADDRESS} with your domain in .env:
+#   SITE_ADDRESS=adminchat.yourdomain.com
+#
+# Or for local/IP access without HTTPS:
+#   SITE_ADDRESS=:80
+
+{$SITE_ADDRESS:localhost} {
+	# Backend API
+	handle /api/* {
+		reverse_proxy adminchat-backend:8000
+	}
+
+	# WebSocket
+	handle /ws/* {
+		reverse_proxy adminchat-backend:8000
+	}
+
+	# Telegram Webhook
+	handle /webhook/* {
+		reverse_proxy adminchat-backend:8000
+	}
+
+	# Health check
+	handle /health {
+		reverse_proxy adminchat-backend:8000
+	}
+
+	# Frontend (catch-all)
+	handle {
+		reverse_proxy adminchat-frontend:80
+	}
+}

@@ -68,11 +68,21 @@ docker compose -f docker-compose.full.yml up -d
 
 | 需求 | 操作 |
 |------|------|
-| 不用内置 Nginx（自有反向代理） | 注释掉 nginx 服务，取消注释 backend/frontend 的 ports |
+| Nginx → Caddy（自动 HTTPS） | 注释掉 nginx 服务，取消注释 caddy 服务，设置 `SITE_ADDRESS` |
+| 禁用内置代理（自有 APISIX/Traefik） | 注释掉 nginx 和 caddy，取消注释 backend/frontend 的 ports |
 | 用外部 PostgreSQL | 注释掉 postgres 服务，修改 DATABASE_URL |
 | 用外部 Redis | 注释掉 redis 服务，修改 REDIS_URL |
-| 用 bind mount（方便备份） | 将 volume 改为 `./data/xxx:/path` 格式 |
-| 连接已有 Docker 网络 | 取消注释 networks.external_net 配置 |
+| Named Volume → Bind Mount | 按 `[BIND MOUNT]` 注释切换，方便备份 |
+| 连接已有 Docker 网络 | 取消注释底部 `external_net` 配置 |
+
+#### 反向代理选择
+
+| 特性 | Nginx | Caddy |
+|------|-------|-------|
+| HTTPS | 手动配置证书 | **自动** Let's Encrypt |
+| 配置文件 | `nginx.conf` | `Caddyfile` |
+| 适合场景 | 已有 Nginx 经验 | 想要零配置 HTTPS |
+| HTTP/3 | 不支持 | 支持 |
 
 ### 数据卷说明
 
@@ -163,11 +173,21 @@ Visit `http://server-ip`, default login `admin` (password in .env).
 
 | Need | Action |
 |------|--------|
-| Skip bundled Nginx (own reverse proxy) | Comment out nginx service, uncomment backend/frontend ports |
+| Nginx to Caddy (auto HTTPS) | Comment out nginx, uncomment caddy, set `SITE_ADDRESS` |
+| Disable built-in proxy (own APISIX/Traefik) | Comment out nginx and caddy, uncomment backend/frontend ports |
 | Use external PostgreSQL | Comment out postgres service, update DATABASE_URL |
 | Use external Redis | Comment out redis service, update REDIS_URL |
-| Use bind mounts (easy backup) | Change volumes to `./data/xxx:/path` format |
-| Connect to existing Docker network | Uncomment networks.external_net section |
+| Named Volume to Bind Mount | Follow `[BIND MOUNT]` comments in yml, easier backups |
+| Connect to existing Docker network | Uncomment `external_net` at bottom of yml |
+
+#### Reverse Proxy Choice
+
+| Feature | Nginx | Caddy |
+|---------|-------|-------|
+| HTTPS | Manual certs | **Auto** Let's Encrypt |
+| Config file | `nginx.conf` | `Caddyfile` |
+| Best for | Nginx experience | Zero-config HTTPS |
+| HTTP/3 | No | Yes |
 
 ### Volume Types
 
