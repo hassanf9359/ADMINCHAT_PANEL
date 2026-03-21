@@ -103,7 +103,7 @@ function SidebarInner() {
           <LogOut size={20} />
         </button>
         <div className="flex flex-col items-center px-1 select-none">
-          <span className="text-text-placeholder text-[8px] leading-tight">v0.1.0</span>
+          <span className="text-text-placeholder text-[8px] leading-tight">v{__APP_VERSION__}</span>
           <span className="text-text-placeholder text-[7px] leading-tight">&reg; NH&times;SK</span>
         </div>
       </div>

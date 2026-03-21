@@ -1,10 +1,25 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import fs from 'fs'
+import path from 'path'
+
+// Read version files from project root
+const readVersion = (file: string) => {
+  try {
+    return fs.readFileSync(path.resolve(__dirname, '..', file), 'utf-8').trim()
+  } catch {
+    return 'dev'
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    __APP_VERSION__: JSON.stringify(readVersion('VERSION')),
+    __BUILD_VERSION__: JSON.stringify(readVersion('BUILD_VERSION')),
+  },
   server: {
     proxy: {
       '/api': {

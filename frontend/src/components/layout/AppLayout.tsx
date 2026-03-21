@@ -82,11 +82,11 @@ export default function AppLayout() {
         </main>
 
         {/* Footer */}
-        <footer className="flex items-center justify-center h-7 px-4 border-t border-[#1A1A1A] bg-[#080808] shrink-0 gap-3">
-          <span className="text-[10px] text-[#4a4a4a] font-mono">
-            Powered By ADMINCHAT PANEL v0.1.0 (20260321.0001)
+        <footer className="flex flex-col items-center justify-center py-1.5 px-4 border-t border-[#1A1A1A] bg-[#080808] shrink-0">
+          <span className="text-[10px] text-[#4a4a4a] font-mono leading-tight">
+            Powered By ADMINCHAT PANEL v{__APP_VERSION__} ({__BUILD_VERSION__})
           </span>
-          <span className="text-[10px] text-[#4a4a4a]">
+          <span className="text-[9px] text-[#4a4a4a] leading-tight">
             &reg;2026 NovaHelix &amp; SAKAKIBARA
           </span>
         </footer>
