@@ -94,8 +94,29 @@ async def handle_group_message(
     6. Publish to Redis
     """
     tg_user = message.from_user
-    if tg_user is None or tg_user.is_bot:
-        return
+
+    # Handle anonymous senders (channel masks / anonymous admins)
+    # sender_chat is set when someone sends as a channel identity
+    is_anonymous = tg_user is None or (message.sender_chat is not None)
+
+    if tg_user is None and message.sender_chat is None:
+        return  # Truly unknown sender, skip
+
+    # For anonymous senders, create a pseudo-user from sender_chat info
+    if is_anonymous and message.sender_chat:
+        # Use sender_chat as the identity
+        class _AnonUser:
+            def __init__(self, chat):
+                self.id = chat.id
+                self.is_bot = False
+                self.first_name = chat.title or "Anonymous"
+                self.last_name = None
+                self.username = chat.username
+                self.language_code = None
+                self.is_premium = False
+        tg_user = _AnonUser(message.sender_chat)
+    elif tg_user is not None and tg_user.is_bot:
+        return  # Skip actual bots (not channel identities)
 
     # Only respond to messages that @mention this bot
     logger.info(
