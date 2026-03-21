@@ -200,12 +200,20 @@ class BotManager:
         # Register in dispatcher module so outbound sends can find this bot
         register_bot_instance(bot_db_id, aiogram_bot)
 
+        # Register bot FIRST so webhook requests can be handled
+        self._bots[bot_db_id] = entry
+
         if settings.BOT_MODE == "webhook":
-            await self._setup_webhook(entry)
+            try:
+                await self._setup_webhook(entry)
+            except Exception:
+                logger.warning(
+                    "SetWebhook failed for bot %s (will retry on next restart), "
+                    "but bot is registered for incoming webhooks",
+                    bot_db_id,
+                )
         else:
             await self._start_polling(entry)
-
-        self._bots[bot_db_id] = entry
 
         # Update DB with bot info
         async with async_session_factory() as session:
