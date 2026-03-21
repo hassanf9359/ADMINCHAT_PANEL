@@ -1,11 +1,9 @@
-# Local development: docker compose up -d
-# Production: use docker-compose.prod.yml instead
+# Production deployment using GHCR images
+# Usage: docker compose -f docker-compose.prod.yml up -d
 
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/fxxkrlab/adminchat_panel-backend:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -15,8 +13,6 @@ services:
     env_file: .env
     volumes:
       - media_cache:/app/media
-    ports:
-      - "8000:8000"
     networks:
       - adminchat
     healthcheck:
@@ -27,12 +23,8 @@ services:
       start_period: 30s
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/fxxkrlab/adminchat_panel-frontend:latest
     restart: unless-stopped
-    ports:
-      - "3000:80"
     networks:
       - adminchat
 
@@ -45,8 +37,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     networks:
       - adminchat
     healthcheck:
@@ -58,11 +48,9 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
     volumes:
       - redisdata:/data
-    ports:
-      - "6379:6379"
     networks:
       - adminchat
     healthcheck:
