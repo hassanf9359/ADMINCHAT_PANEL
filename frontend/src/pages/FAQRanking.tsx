@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Trophy } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import Header from '../components/layout/Header';
 import { getRanking } from '../services/faqApi';
-import type { FAQRankingItem } from '../types';
 
 type Period = 'today' | 'week' | 'month' | 'all';
 
