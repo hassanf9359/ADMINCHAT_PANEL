@@ -73,8 +73,10 @@ class AIHandler:
         """
         client = await self._get_client()
 
-        # If base_url already contains a full path (e.g. /v1/responses),
-        # use it directly. Otherwise append /chat/completions for standard OpenAI.
+        # Smart URL construction:
+        # - If base_url ends with /v1 or /v1/chat → append /completions
+        # - If base_url already has full path (/responses, /completions) → use as-is
+        # - Otherwise → append /chat/completions (standard OpenAI)
         base = config.base_url.rstrip("/")
         if base.endswith("/v1") or base.endswith("/v1/chat") or base.endswith("/chat"):
             url = base + "/completions"
@@ -82,8 +84,12 @@ class AIHandler:
             url = base
         else:
             url = base + "/chat/completions"
+
+        # Send API key in multiple headers for maximum compatibility
+        # (OpenAI uses Authorization, CRS/Google use x-api-key)
         headers = {
             "Authorization": f"Bearer {config.api_key}",
+            "x-api-key": config.api_key,
             "Content-Type": "application/json",
         }
         payload: Dict[str, Any] = {
