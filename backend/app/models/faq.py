@@ -20,7 +20,8 @@ class FaqQuestion(Base, TimestampMixin):
 
     # Relationships
     rule_questions = relationship(
-        "FaqRuleQuestion", back_populates="question", cascade="all, delete-orphan"
+        "FaqRuleQuestion", back_populates="question", cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
 
@@ -37,7 +38,8 @@ class FaqAnswer(Base, TimestampMixin):
 
     # Relationships
     rule_answers = relationship(
-        "FaqRuleAnswer", back_populates="answer", cascade="all, delete-orphan"
+        "FaqRuleAnswer", back_populates="answer", cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
 
@@ -51,20 +53,25 @@ class FaqRule(Base, TimestampMixin):
     )  # 'single', 'random', 'all'
     reply_mode: Mapped[str] = mapped_column(
         String(30), nullable=False, server_default="direct"
-    )  # 'direct','ai_only','ai_polish','ai_fallback','ai_intent','ai_template','rag'
+    )
     ai_config: Mapped[dict] = mapped_column(JSONB, server_default="{}")
     priority: Mapped[int] = mapped_column(Integer, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, server_default="true", index=True)
     daily_ai_limit: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
-    # Relationships
+    # Relationships - all use lazy="selectin" for async compatibility
     rule_questions = relationship(
-        "FaqRuleQuestion", back_populates="rule", cascade="all, delete-orphan"
+        "FaqRuleQuestion", back_populates="rule", cascade="all, delete-orphan",
+        lazy="selectin",
     )
     rule_answers = relationship(
-        "FaqRuleAnswer", back_populates="rule", cascade="all, delete-orphan"
+        "FaqRuleAnswer", back_populates="rule", cascade="all, delete-orphan",
+        lazy="selectin",
     )
-    hit_stats = relationship("FaqHitStat", back_populates="faq_rule", cascade="all, delete-orphan")
+    hit_stats = relationship(
+        "FaqHitStat", back_populates="faq_rule", cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class FaqRuleQuestion(Base):
@@ -78,8 +85,8 @@ class FaqRuleQuestion(Base):
     )
 
     # Relationships
-    rule = relationship("FaqRule", back_populates="rule_questions")
-    question = relationship("FaqQuestion", back_populates="rule_questions")
+    rule = relationship("FaqRule", back_populates="rule_questions", lazy="selectin")
+    question = relationship("FaqQuestion", back_populates="rule_questions", lazy="selectin")
 
 
 class FaqRuleAnswer(Base):
@@ -93,5 +100,5 @@ class FaqRuleAnswer(Base):
     )
 
     # Relationships
-    rule = relationship("FaqRule", back_populates="rule_answers")
-    answer = relationship("FaqAnswer", back_populates="rule_answers")
+    rule = relationship("FaqRule", back_populates="rule_answers", lazy="selectin")
+    answer = relationship("FaqAnswer", back_populates="rule_answers", lazy="selectin")
