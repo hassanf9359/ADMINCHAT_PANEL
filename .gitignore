@@ -49,3 +49,6 @@ docs/designs/*.pen
 
 # Error screenshots
 errorshot/
+
+# Original requirements (private)
+docs/ORIGINAL_REQUIREMENTS.md
