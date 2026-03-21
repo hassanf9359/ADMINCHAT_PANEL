@@ -235,27 +235,27 @@ export default function FAQEditor() {
             />
           </div>
           <div className="w-44">
-            <label className="block text-[13px] font-medium text-[#8a8a8a] mb-2 font-['Inter']">Match Mode</label>
+            <label className="block text-[13px] font-medium text-[#8a8a8a] mb-2 font-['Inter']">Response Mode</label>
             <select
-              value={replyMode}
-              onChange={(e) => setReplyMode(e.target.value as ReplyMode)}
+              value={responseMode}
+              onChange={(e) => setResponseMode(e.target.value as ResponseMode)}
               className="w-full h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white focus:outline-none focus:border-[#00D9FF] transition-colors"
             >
-              {REPLY_MODES.map((m) => (
+              {RESPONSE_MODES.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>
               ))}
             </select>
           </div>
-          <div className="w-44">
+          <div className="w-52">
             <label className="block text-[13px] font-medium text-[#8a8a8a] mb-2 font-['Inter']">Reply Mode</label>
             <select
-              value={responseMode}
-              onChange={(e) => setResponseMode(e.target.value as ResponseMode)}
+              value={replyMode}
+              onChange={(e) => setReplyMode(e.target.value as ReplyMode)}
               className="w-full h-10 px-3.5 bg-[#141414] border border-[#00D9FF]/30 rounded-lg text-sm text-[#00D9FF] focus:outline-none focus:border-[#00D9FF] transition-colors"
             >
-              {RESPONSE_MODES.map((m) => (
+              {REPLY_MODES.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>

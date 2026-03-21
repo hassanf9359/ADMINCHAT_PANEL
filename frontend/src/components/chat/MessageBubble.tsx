@@ -117,11 +117,21 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
           </div>
         )}
 
-        {/* Footer: timestamp + faq rule */}
-        <div className="flex items-center gap-2 mt-1.5 justify-end">
+        {/* Footer: timestamp + tags */}
+        <div className="flex items-center gap-1.5 mt-1.5 justify-end flex-wrap">
+          {isFaq && (
+            <span className="text-[10px] text-[#059669] font-['JetBrains_Mono'] font-semibold bg-[#059669]/10 px-1.5 py-0.5 rounded">
+              FAQ 自动回复
+            </span>
+          )}
+          {message.sender_type === 'ai' && (
+            <span className="text-[10px] text-[#8B5CF6] font-['JetBrains_Mono'] font-semibold bg-[#8B5CF6]/10 px-1.5 py-0.5 rounded">
+              AI 回复
+            </span>
+          )}
           {message.faq_rule_name && (
-            <span className="text-[10px] text-[#059669] font-['JetBrains_Mono'] bg-[#059669]/10 px-1.5 py-0.5 rounded">
-              FAQ: {message.faq_rule_name}
+            <span className="text-[10px] text-[#059669]/70 font-['JetBrains_Mono'] bg-[#059669]/5 px-1.5 py-0.5 rounded">
+              {message.faq_rule_name}
             </span>
           )}
           <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono']">

@@ -111,7 +111,7 @@ export interface Conversation {
 
 // === Messages ===
 export type MessageDirection = 'incoming' | 'outgoing' | 'inbound' | 'outbound';
-export type SenderType = 'user' | 'admin' | 'bot' | 'faq';
+export type SenderType = 'user' | 'admin' | 'bot' | 'faq' | 'ai';
 export type MessageType = 'text' | 'photo' | 'video' | 'document' | 'sticker' | 'voice' | 'animation';
 
 export interface Message {
