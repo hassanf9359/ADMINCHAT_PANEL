@@ -16,7 +16,9 @@ from app.models.user import TgUser
 from app.models.group import TgGroup, GroupBot
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.models.stats import FaqHitStat, UnmatchedMessage
 from app.services.realtime import publish_new_message, publish_conversation_update
+from app.faq.engine import match as faq_match
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +238,55 @@ async def handle_group_message(
                 created_at=msg_time,
             )
             session.add(db_msg)
+            await session.flush()
+
+            # ---- 4b. FAQ matching for group messages ----
+            faq_text = mentioned_text or text_content
+            if faq_text and content_type == "text":
+                try:
+                    faq_result = await faq_match(faq_text, session)
+                    if faq_result:
+                        db_msg.faq_matched = True
+                        db_msg.faq_rule_id = faq_result.rule_id
+
+                        # Record hit
+                        from datetime import date as date_type
+                        today = date_type.today()
+                        hit_result = await session.execute(
+                            select(FaqHitStat).where(
+                                FaqHitStat.faq_rule_id == faq_result.rule_id,
+                                FaqHitStat.date == today,
+                            )
+                        )
+                        hit_stat = hit_result.scalar_one_or_none()
+                        if hit_stat:
+                            hit_stat.hit_count += 1
+                            hit_stat.last_hit_at = datetime.utcnow()
+                        else:
+                            session.add(FaqHitStat(
+                                faq_rule_id=faq_result.rule_id,
+                                hit_count=1,
+                                last_hit_at=datetime.utcnow(),
+                                date=today,
+                            ))
+
+                        # Send auto-reply if direct mode
+                        if faq_result.reply_mode == "direct" and faq_result.answers:
+                            for answer in faq_result.answers:
+                                try:
+                                    await message.reply(answer)
+                                except Exception:
+                                    logger.warning("Failed to send FAQ reply in group")
+                            logger.info("FAQ matched in group: rule=%s", faq_result.rule_id)
+                    else:
+                        # Store for missed knowledge analysis
+                        session.add(UnmatchedMessage(
+                            tg_user_id=db_user.id,
+                            text_content=faq_text,
+                        ))
+                except Exception:
+                    logger.exception("FAQ matching error in group handler")
+
             await session.commit()
 
             # ---- 5. Publish to Redis ----
