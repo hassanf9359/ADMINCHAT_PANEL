@@ -11,6 +11,7 @@ import {
   createAnswer,
   createRule,
   updateRule,
+  getFAQGroups,
 } from '../services/faqApi';
 import type { MatchMode, ResponseMode, ReplyMode } from '../types';
 
@@ -52,6 +53,7 @@ export default function FAQEditor() {
   const [replyMode, setReplyMode] = useState<ReplyMode>('direct');
   const [priority, setPriority] = useState(0);
   const [dailyAiLimit, setDailyAiLimit] = useState<number | ''>('');
+  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<number>>(new Set());
   const [selectedAnswerIds, setSelectedAnswerIds] = useState<Set<number>>(new Set());
 
@@ -80,6 +82,12 @@ export default function FAQEditor() {
     staleTime: 60_000,
   });
 
+  const { data: faqGroups = [] } = useQuery({
+    queryKey: ['faq-groups'],
+    queryFn: getFAQGroups,
+    staleTime: 30_000,
+  });
+
   const selectedQuestionArray = useMemo(() => Array.from(selectedQuestionIds), [selectedQuestionIds]);
   const selectedAnswerArray = useMemo(() => Array.from(selectedAnswerIds), [selectedAnswerIds]);
 
@@ -105,6 +113,7 @@ export default function FAQEditor() {
       setReplyMode(existingRule.reply_mode);
       setPriority(existingRule.priority);
       setDailyAiLimit(existingRule.daily_ai_limit ?? '');
+      setCategoryId(existingRule.category_id ?? null);
       setSelectedQuestionIds(new Set(existingRule.questions.map((q) => q.id)));
       setSelectedAnswerIds(new Set(existingRule.answers.map((a) => a.id)));
     }
@@ -158,6 +167,7 @@ export default function FAQEditor() {
         reply_mode: replyMode,
         priority,
         daily_ai_limit: dailyAiLimit === '' ? undefined : dailyAiLimit,
+        category_id: categoryId,
       };
 
       if (isNew) {
@@ -303,6 +313,28 @@ export default function FAQEditor() {
                   className="w-full h-9 px-3 bg-[#141414] border border-[#2f2f2f] rounded-md text-sm text-white font-['JetBrains_Mono'] focus:outline-none focus:border-[#059669] transition-colors"
                 />
                 <p className="text-[10px] text-[#6a6a6a] mt-1">Higher = matched first</p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#8a8a8a] mb-1.5">Category</label>
+                <select
+                  value={categoryId ?? ''}
+                  onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full h-9 px-3 bg-[#141414] border border-[#2f2f2f] rounded-md text-sm text-white focus:outline-none focus:border-[#059669] transition-colors appearance-none"
+                >
+                  <option value="">No category</option>
+                  {faqGroups.map((g) => (
+                    <optgroup key={g.id} label={g.name}>
+                      {g.categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                          {c.bot_group_name ? ` [${c.bot_group_name}]` : g.bot_group_name ? ` [${g.bot_group_name}]` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <p className="text-[10px] text-[#6a6a6a] mt-1">Route replies via category's bot group</p>
               </div>
 
               {aiEnabled && (

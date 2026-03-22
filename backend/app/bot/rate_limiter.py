@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.bot import Bot
+from app.models.bot_group import BotGroupMember
 from app.services.redis import get_redis
 
 logger = logging.getLogger(__name__)
@@ -113,3 +114,30 @@ async def get_available_bots(
         if not await is_rate_limited(bot.id):
             available.append(bot)
     return available
+
+
+async def get_bot_from_group(
+    db: AsyncSession,
+    bot_group_id: int,
+) -> Optional[Bot]:
+    """
+    Pick the best available (non-rate-limited) bot from a Bot Group.
+
+    Returns None if all bots in the group are rate-limited or inactive.
+    """
+    stmt = (
+        select(Bot)
+        .join(BotGroupMember, BotGroupMember.bot_id == Bot.id)
+        .where(
+            BotGroupMember.bot_group_id == bot_group_id,
+            Bot.is_active.is_(True),
+        )
+        .order_by(Bot.priority.desc())
+    )
+    result = await db.execute(stmt)
+    bots = result.scalars().all()
+
+    for bot in bots:
+        if not await is_rate_limited(bot.id):
+            return bot
+    return None

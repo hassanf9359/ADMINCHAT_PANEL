@@ -151,7 +151,26 @@ export interface Bot {
   rate_limit_until?: string;
   message_count: number;
   is_active: boolean;
+  bot_group_id?: number;
+  bot_group_name?: string;
   created_at: string;
+}
+
+// === Bot Groups ===
+export interface BotGroupMember {
+  bot_id: number;
+  bot_username?: string;
+  display_name?: string;
+}
+
+export interface BotGroup {
+  id: number;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  members: BotGroupMember[];
+  created_at: string;
+  updated_at: string;
 }
 
 // === FAQ ===
@@ -188,8 +207,37 @@ export interface FAQRule {
   ai_config: Record<string, unknown>;
   priority: number;
   daily_ai_limit?: number;
+  category_id?: number;
+  category_name?: string;
+  faq_group_id?: number;
+  faq_group_name?: string;
   hit_count: number;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// === FAQ Groups & Categories ===
+export interface FAQCategory {
+  id: number;
+  name: string;
+  faq_group_id: number;
+  bot_group_id?: number;
+  bot_group_name?: string;
+  is_active: boolean;
+  rule_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FAQGroup {
+  id: number;
+  name: string;
+  description?: string;
+  bot_group_id?: number;
+  bot_group_name?: string;
+  is_active: boolean;
+  categories: FAQCategory[];
   created_at: string;
   updated_at: string;
 }

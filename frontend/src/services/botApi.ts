@@ -1,5 +1,5 @@
 import api from './api';
-import type { Bot } from '../types';
+import type { Bot, BotGroup } from '../types';
 
 export interface BotCreateData {
   token: string;
@@ -37,9 +37,49 @@ export async function getBots(): Promise<{ items: Bot[]; total: number }> {
     rate_limit_until: b.rate_limit_until,
     message_count: 0,
     is_active: b.is_active,
+    bot_group_id: b.bot_group_id,
+    bot_group_name: b.bot_group_name,
     created_at: b.created_at,
   }));
   return { items, total: data.data.total };
+}
+
+// === Bot Groups ===
+
+export interface BotGroupCreateData {
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface BotGroupUpdateData {
+  name?: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export async function getBotGroups(): Promise<BotGroup[]> {
+  const { data } = await api.get('/bot-groups');
+  return data.data;
+}
+
+export async function createBotGroup(body: BotGroupCreateData): Promise<BotGroup> {
+  const { data } = await api.post('/bot-groups', body);
+  return data.data;
+}
+
+export async function updateBotGroup(id: number, body: BotGroupUpdateData): Promise<BotGroup> {
+  const { data } = await api.patch(`/bot-groups/${id}`, body);
+  return data.data;
+}
+
+export async function deleteBotGroup(id: number): Promise<void> {
+  await api.delete(`/bot-groups/${id}`);
+}
+
+export async function setBotGroupMembers(groupId: number, botIds: number[]): Promise<BotGroup> {
+  const { data } = await api.put(`/bot-groups/${groupId}/members`, { bot_ids: botIds });
+  return data.data;
 }
 
 export async function createBot(body: BotCreateData): Promise<Bot> {

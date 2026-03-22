@@ -16,6 +16,14 @@ DELETE /faq/rules/:id          - delete rule
 GET    /faq/ranking            - hit stats ranking
 GET    /faq/missed-keywords    - missed knowledge ranking
 DELETE /faq/missed-keywords/:id - remove keyword
+GET    /faq/groups             - list FAQ groups
+POST   /faq/groups             - create FAQ group
+PATCH  /faq/groups/:id         - update FAQ group
+DELETE /faq/groups/:id         - delete FAQ group
+GET    /faq/categories         - list FAQ categories
+POST   /faq/categories         - create FAQ category
+PATCH  /faq/categories/:id     - update FAQ category
+DELETE /faq/categories/:id     - delete FAQ category
 """
 from __future__ import annotations
 
@@ -32,6 +40,8 @@ from app.api.deps import get_db, require_admin, get_current_active_user
 from app.models.admin import Admin
 from app.models.faq import (
     FaqAnswer,
+    FaqCategory,
+    FaqGroup,
     FaqQuestion,
     FaqRule,
     FaqRuleAnswer,
@@ -53,10 +63,67 @@ from app.schemas.faq import (
     FAQRuleUpdate,
     MissedKeywordItem,
 )
+from app.schemas.faq_group import (
+    FAQCategoryCreate,
+    FAQCategoryResponse,
+    FAQCategoryUpdate,
+    FAQGroupCreate,
+    FAQGroupResponse,
+    FAQGroupUpdate,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _build_rule_response(rule: FaqRule, total_hits: int = 0) -> dict:
+    """Build FAQRuleResponse dict from an ORM rule with eager-loaded relations."""
+    category_name = None
+    faq_group_id = None
+    faq_group_name = None
+    if rule.category:
+        category_name = rule.category.name
+        if rule.category.faq_group:
+            faq_group_id = rule.category.faq_group_id
+            faq_group_name = rule.category.faq_group.name
+
+    return FAQRuleResponse(
+        id=rule.id,
+        name=rule.name,
+        response_mode=rule.response_mode,
+        reply_mode=rule.reply_mode,
+        ai_config=rule.ai_config or {},
+        priority=rule.priority,
+        daily_ai_limit=rule.daily_ai_limit,
+        category_id=rule.category_id,
+        category_name=category_name,
+        faq_group_id=faq_group_id,
+        faq_group_name=faq_group_name,
+        is_active=rule.is_active,
+        questions=[
+            FAQQuestionResponse.model_validate(rq.question)
+            for rq in rule.rule_questions
+            if rq.question
+        ],
+        answers=[
+            FAQAnswerResponse.model_validate(ra.answer)
+            for ra in rule.rule_answers
+            if ra.answer
+        ],
+        hit_count=total_hits,
+        created_at=rule.created_at,
+        updated_at=rule.updated_at,
+    ).model_dump(mode="json")
+
+
+def _rule_query_options():
+    """Standard selectinload options for FaqRule queries."""
+    return [
+        selectinload(FaqRule.rule_questions).selectinload(FaqRuleQuestion.question),
+        selectinload(FaqRule.rule_answers).selectinload(FaqRuleAnswer.answer),
+        selectinload(FaqRule.category).selectinload(FaqCategory.faq_group),
+    ]
 
 
 # ============================================================
@@ -244,14 +311,13 @@ async def list_rules(
     _current_user: Annotated[Admin, Depends(require_admin)],
     reply_mode: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
+    category_id: Optional[int] = Query(None),
+    group_id: Optional[int] = Query(None),
 ):
     """List all FAQ rules with associated questions and answers."""
     stmt = (
         select(FaqRule)
-        .options(
-            selectinload(FaqRule.rule_questions).selectinload(FaqRuleQuestion.question),
-            selectinload(FaqRule.rule_answers).selectinload(FaqRuleAnswer.answer),
-        )
+        .options(*_rule_query_options())
         .order_by(FaqRule.priority.desc(), FaqRule.id.desc())
     )
 
@@ -259,44 +325,25 @@ async def list_rules(
         stmt = stmt.where(FaqRule.reply_mode == reply_mode)
     if is_active is not None:
         stmt = stmt.where(FaqRule.is_active == is_active)
+    if category_id is not None:
+        stmt = stmt.where(FaqRule.category_id == category_id)
+    if group_id is not None:
+        stmt = stmt.join(FaqCategory, FaqRule.category_id == FaqCategory.id).where(
+            FaqCategory.faq_group_id == group_id
+        )
 
     result = await db.execute(stmt)
     rules = result.scalars().unique().all()
 
     items = []
     for rule in rules:
-        # Compute total hit count for this rule
         hit_result = await db.execute(
             select(func.coalesce(func.sum(FaqHitStat.hit_count), 0)).where(
                 FaqHitStat.faq_rule_id == rule.id
             )
         )
         total_hits = hit_result.scalar() or 0
-
-        rule_data = FAQRuleResponse(
-            id=rule.id,
-            name=rule.name,
-            response_mode=rule.response_mode,
-            reply_mode=rule.reply_mode,
-            ai_config=rule.ai_config or {},
-            priority=rule.priority,
-            daily_ai_limit=rule.daily_ai_limit,
-            is_active=rule.is_active,
-            questions=[
-                FAQQuestionResponse.model_validate(rq.question)
-                for rq in rule.rule_questions
-                if rq.question
-            ],
-            answers=[
-                FAQAnswerResponse.model_validate(ra.answer)
-                for ra in rule.rule_answers
-                if ra.answer
-            ],
-            hit_count=total_hits,
-            created_at=rule.created_at,
-            updated_at=rule.updated_at,
-        )
-        items.append(rule_data.model_dump(mode="json"))
+        items.append(_build_rule_response(rule, total_hits))
 
     return APIResponse(data=items)
 
@@ -313,6 +360,14 @@ async def create_rule(
     _current_user: Annotated[Admin, Depends(require_admin)],
 ):
     """Create a new FAQ rule with question and answer associations."""
+    # Validate category_id if provided
+    if body.category_id is not None:
+        cat_result = await db.execute(
+            select(FaqCategory).where(FaqCategory.id == body.category_id)
+        )
+        if cat_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=400, detail="Category not found")
+
     rule = FaqRule(
         name=body.name,
         response_mode=body.response_mode,
@@ -320,6 +375,7 @@ async def create_rule(
         ai_config=body.ai_config,
         priority=body.priority,
         daily_ai_limit=body.daily_ai_limit,
+        category_id=body.category_id,
         is_active=body.is_active,
     )
     db.add(rule)
@@ -350,40 +406,10 @@ async def create_rule(
     await db.flush()
 
     # Reload with relationships
-    stmt = (
-        select(FaqRule)
-        .where(FaqRule.id == rule.id)
-        .options(
-            selectinload(FaqRule.rule_questions).selectinload(FaqRuleQuestion.question),
-            selectinload(FaqRule.rule_answers).selectinload(FaqRuleAnswer.answer),
-        )
+    result = await db.execute(
+        select(FaqRule).where(FaqRule.id == rule.id).options(*_rule_query_options())
     )
-    result = await db.execute(stmt)
     rule = result.scalar_one()
-
-    rule_resp = FAQRuleResponse(
-        id=rule.id,
-        name=rule.name,
-        response_mode=rule.response_mode,
-        reply_mode=rule.reply_mode,
-        ai_config=rule.ai_config or {},
-        priority=rule.priority,
-        daily_ai_limit=rule.daily_ai_limit,
-        is_active=rule.is_active,
-        questions=[
-            FAQQuestionResponse.model_validate(rq.question)
-            for rq in rule.rule_questions
-            if rq.question
-        ],
-        answers=[
-            FAQAnswerResponse.model_validate(ra.answer)
-            for ra in rule.rule_answers
-            if ra.answer
-        ],
-        hit_count=0,
-        created_at=rule.created_at,
-        updated_at=rule.updated_at,
-    )
 
     await log_action(
         db, _current_user.id, "create_faq_rule", "faq_rule", rule.id,
@@ -394,7 +420,7 @@ async def create_rule(
     return APIResponse(
         code=201,
         message="Rule created",
-        data=rule_resp.model_dump(mode="json"),
+        data=_build_rule_response(rule),
     )
 
 
@@ -421,14 +447,20 @@ async def update_rule(
 
     update_data = body.model_dump(exclude_unset=True)
 
+    # Validate category_id if provided
+    if "category_id" in update_data and update_data["category_id"] is not None:
+        cat_result = await db.execute(
+            select(FaqCategory).where(FaqCategory.id == update_data["category_id"])
+        )
+        if cat_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=400, detail="Category not found")
+
     # Handle question_ids reassociation
     if "question_ids" in update_data:
         question_ids = update_data.pop("question_ids")
-        # Remove old associations
         await db.execute(
             delete(FaqRuleQuestion).where(FaqRuleQuestion.rule_id == rule.id)
         )
-        # Add new ones
         for qid in question_ids:
             q_result = await db.execute(
                 select(FaqQuestion).where(FaqQuestion.id == qid)
@@ -462,15 +494,9 @@ async def update_rule(
     await db.flush()
 
     # Reload with relationships
-    stmt = (
-        select(FaqRule)
-        .where(FaqRule.id == rule.id)
-        .options(
-            selectinload(FaqRule.rule_questions).selectinload(FaqRuleQuestion.question),
-            selectinload(FaqRule.rule_answers).selectinload(FaqRuleAnswer.answer),
-        )
+    result = await db.execute(
+        select(FaqRule).where(FaqRule.id == rule.id).options(*_rule_query_options())
     )
-    result = await db.execute(stmt)
     rule = result.scalar_one()
 
     hit_result = await db.execute(
@@ -480,37 +506,13 @@ async def update_rule(
     )
     total_hits = hit_result.scalar() or 0
 
-    rule_resp = FAQRuleResponse(
-        id=rule.id,
-        name=rule.name,
-        response_mode=rule.response_mode,
-        reply_mode=rule.reply_mode,
-        ai_config=rule.ai_config or {},
-        priority=rule.priority,
-        daily_ai_limit=rule.daily_ai_limit,
-        is_active=rule.is_active,
-        questions=[
-            FAQQuestionResponse.model_validate(rq.question)
-            for rq in rule.rule_questions
-            if rq.question
-        ],
-        answers=[
-            FAQAnswerResponse.model_validate(ra.answer)
-            for ra in rule.rule_answers
-            if ra.answer
-        ],
-        hit_count=total_hits,
-        created_at=rule.created_at,
-        updated_at=rule.updated_at,
-    )
-
     await log_action(
         db, _current_user.id, "update_faq_rule", "faq_rule", rule_id,
         {"name": rule.name},
         request.client.host if request.client else None,
     )
 
-    return APIResponse(data=rule_resp.model_dump(mode="json"))
+    return APIResponse(data=_build_rule_response(rule, total_hits))
 
 
 @router.delete("/rules/{rule_id}", response_model=APIResponse)
@@ -633,3 +635,317 @@ async def delete_missed_keyword(
     keyword.is_resolved = True
     keyword.updated_at = datetime.utcnow()
     return APIResponse(message="Keyword marked as resolved")
+
+
+# ============================================================
+# FAQ Groups
+# ============================================================
+
+async def _build_group_response(group: FaqGroup, db: AsyncSession) -> dict:
+    categories = []
+    for cat in (group.categories or []):
+        rule_count_result = await db.execute(
+            select(func.count(FaqRule.id)).where(FaqRule.category_id == cat.id)
+        )
+        rule_count = rule_count_result.scalar() or 0
+        categories.append(FAQCategoryResponse(
+            id=cat.id,
+            name=cat.name,
+            faq_group_id=cat.faq_group_id,
+            bot_group_id=cat.bot_group_id,
+            bot_group_name=cat.bot_group.name if cat.bot_group else None,
+            is_active=cat.is_active,
+            rule_count=rule_count,
+            created_at=cat.created_at,
+            updated_at=cat.updated_at,
+        ))
+    return FAQGroupResponse(
+        id=group.id,
+        name=group.name,
+        description=group.description,
+        bot_group_id=group.bot_group_id,
+        bot_group_name=group.bot_group.name if group.bot_group else None,
+        is_active=group.is_active,
+        categories=categories,
+        created_at=group.created_at,
+        updated_at=group.updated_at,
+    ).model_dump(mode="json")
+
+
+@router.get("/groups", response_model=APIResponse)
+async def list_faq_groups(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+):
+    """List all FAQ groups with their categories."""
+    result = await db.execute(
+        select(FaqGroup)
+        .options(
+            selectinload(FaqGroup.categories).selectinload(FaqCategory.bot_group),
+            selectinload(FaqGroup.bot_group),
+        )
+        .order_by(FaqGroup.id.asc())
+    )
+    groups = result.scalars().unique().all()
+    items = [await _build_group_response(g, db) for g in groups]
+    return APIResponse(data=items)
+
+
+@router.post("/groups", response_model=APIResponse, status_code=status.HTTP_201_CREATED)
+async def create_faq_group(
+    body: FAQGroupCreate,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+):
+    group = FaqGroup(
+        name=body.name,
+        description=body.description,
+        bot_group_id=body.bot_group_id,
+        is_active=body.is_active,
+    )
+    db.add(group)
+    await db.flush()
+
+    # Reload with relationships
+    result = await db.execute(
+        select(FaqGroup).where(FaqGroup.id == group.id)
+        .options(
+            selectinload(FaqGroup.categories).selectinload(FaqCategory.bot_group),
+            selectinload(FaqGroup.bot_group),
+        )
+    )
+    group = result.scalar_one()
+
+    await log_action(
+        db, _current_user.id, "create_faq_group", "faq_group", group.id,
+        {"name": group.name},
+        request.client.host if request.client else None,
+    )
+    return APIResponse(code=201, message="FAQ group created", data=await _build_group_response(group, db))
+
+
+@router.patch("/groups/{group_id}", response_model=APIResponse)
+async def update_faq_group(
+    group_id: int,
+    body: FAQGroupUpdate,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+):
+    result = await db.execute(select(FaqGroup).where(FaqGroup.id == group_id))
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise HTTPException(status_code=404, detail="FAQ group not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(group, field, value)
+
+    await db.flush()
+
+    result = await db.execute(
+        select(FaqGroup).where(FaqGroup.id == group_id)
+        .options(
+            selectinload(FaqGroup.categories).selectinload(FaqCategory.bot_group),
+            selectinload(FaqGroup.bot_group),
+        )
+    )
+    group = result.scalar_one()
+
+    await log_action(
+        db, _current_user.id, "update_faq_group", "faq_group", group_id,
+        {"name": group.name},
+        request.client.host if request.client else None,
+    )
+    return APIResponse(data=await _build_group_response(group, db))
+
+
+@router.delete("/groups/{group_id}", response_model=APIResponse)
+async def delete_faq_group(
+    group_id: int,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+):
+    result = await db.execute(select(FaqGroup).where(FaqGroup.id == group_id))
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise HTTPException(status_code=404, detail="FAQ group not found")
+
+    await log_action(
+        db, _current_user.id, "delete_faq_group", "faq_group", group_id,
+        {"name": group.name},
+        request.client.host if request.client else None,
+    )
+    await db.delete(group)
+    return APIResponse(message="FAQ group deleted")
+
+
+# ============================================================
+# FAQ Categories
+# ============================================================
+
+@router.get("/categories", response_model=APIResponse)
+async def list_faq_categories(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+    group_id: Optional[int] = Query(None),
+):
+    """List all FAQ categories, optionally filtered by group_id."""
+    stmt = (
+        select(FaqCategory)
+        .options(
+            selectinload(FaqCategory.bot_group),
+            selectinload(FaqCategory.faq_group),
+        )
+        .order_by(FaqCategory.faq_group_id.asc(), FaqCategory.id.asc())
+    )
+    if group_id is not None:
+        stmt = stmt.where(FaqCategory.faq_group_id == group_id)
+
+    result = await db.execute(stmt)
+    categories = result.scalars().unique().all()
+
+    # Count rules per category
+    items = []
+    for cat in categories:
+        rule_count_result = await db.execute(
+            select(func.count(FaqRule.id)).where(FaqRule.category_id == cat.id)
+        )
+        rule_count = rule_count_result.scalar() or 0
+        items.append(FAQCategoryResponse(
+            id=cat.id,
+            name=cat.name,
+            faq_group_id=cat.faq_group_id,
+            bot_group_id=cat.bot_group_id,
+            bot_group_name=cat.bot_group.name if cat.bot_group else None,
+            is_active=cat.is_active,
+            rule_count=rule_count,
+            created_at=cat.created_at,
+            updated_at=cat.updated_at,
+        ).model_dump(mode="json"))
+
+    return APIResponse(data=items)
+
+
+@router.post("/categories", response_model=APIResponse, status_code=status.HTTP_201_CREATED)
+async def create_faq_category(
+    body: FAQCategoryCreate,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+):
+    # Validate group exists
+    grp_result = await db.execute(
+        select(FaqGroup).where(FaqGroup.id == body.faq_group_id)
+    )
+    if grp_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=400, detail="FAQ group not found")
+
+    cat = FaqCategory(
+        name=body.name,
+        faq_group_id=body.faq_group_id,
+        bot_group_id=body.bot_group_id,
+        is_active=body.is_active,
+    )
+    db.add(cat)
+    await db.flush()
+
+    # Reload
+    result = await db.execute(
+        select(FaqCategory).where(FaqCategory.id == cat.id)
+        .options(selectinload(FaqCategory.bot_group), selectinload(FaqCategory.faq_group))
+    )
+    cat = result.scalar_one()
+
+    await log_action(
+        db, _current_user.id, "create_faq_category", "faq_category", cat.id,
+        {"name": cat.name, "faq_group_id": cat.faq_group_id},
+        request.client.host if request.client else None,
+    )
+    return APIResponse(
+        code=201,
+        message="FAQ category created",
+        data=FAQCategoryResponse(
+            id=cat.id,
+            name=cat.name,
+            faq_group_id=cat.faq_group_id,
+            bot_group_id=cat.bot_group_id,
+            bot_group_name=cat.bot_group.name if cat.bot_group else None,
+            is_active=cat.is_active,
+            created_at=cat.created_at,
+            updated_at=cat.updated_at,
+        ).model_dump(mode="json"),
+    )
+
+
+@router.patch("/categories/{category_id}", response_model=APIResponse)
+async def update_faq_category(
+    category_id: int,
+    body: FAQCategoryUpdate,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+):
+    result = await db.execute(select(FaqCategory).where(FaqCategory.id == category_id))
+    cat = result.scalar_one_or_none()
+    if cat is None:
+        raise HTTPException(status_code=404, detail="FAQ category not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(cat, field, value)
+
+    await db.flush()
+
+    result = await db.execute(
+        select(FaqCategory).where(FaqCategory.id == category_id)
+        .options(selectinload(FaqCategory.bot_group), selectinload(FaqCategory.faq_group))
+    )
+    cat = result.scalar_one()
+
+    await log_action(
+        db, _current_user.id, "update_faq_category", "faq_category", category_id,
+        {"name": cat.name},
+        request.client.host if request.client else None,
+    )
+    return APIResponse(
+        data=FAQCategoryResponse(
+            id=cat.id,
+            name=cat.name,
+            faq_group_id=cat.faq_group_id,
+            bot_group_id=cat.bot_group_id,
+            bot_group_name=cat.bot_group.name if cat.bot_group else None,
+            is_active=cat.is_active,
+            created_at=cat.created_at,
+            updated_at=cat.updated_at,
+        ).model_dump(mode="json"),
+    )
+
+
+@router.delete("/categories/{category_id}", response_model=APIResponse)
+async def delete_faq_category(
+    category_id: int,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_admin)],
+):
+    result = await db.execute(select(FaqCategory).where(FaqCategory.id == category_id))
+    cat = result.scalar_one_or_none()
+    if cat is None:
+        raise HTTPException(status_code=404, detail="FAQ category not found")
+
+    # Unlink rules from this category (set category_id = NULL)
+    from sqlalchemy import update as sa_update
+    await db.execute(
+        sa_update(FaqRule).where(FaqRule.category_id == category_id).values(category_id=None)
+    )
+
+    await log_action(
+        db, _current_user.id, "delete_faq_category", "faq_category", category_id,
+        {"name": cat.name},
+        request.client.host if request.client else None,
+    )
+    await db.delete(cat)
+    return APIResponse(message="FAQ category deleted")

@@ -19,10 +19,12 @@ from aiogram.exceptions import TelegramUnauthorizedError
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_db, require_admin, require_super_admin
 from app.models.admin import Admin
 from app.models.bot import Bot
+from app.models.bot_group import BotGroupMember
 from app.models.message import Message
 from app.schemas.bot import (
     BotCreate,
@@ -53,9 +55,21 @@ async def list_bots(
     )
     bots = result.scalars().all()
 
+    # Load bot group memberships
+    member_result = await db.execute(
+        select(BotGroupMember).options(selectinload(BotGroupMember.bot_group))
+    )
+    members = member_result.scalars().all()
+    bot_group_map = {m.bot_id: m.bot_group for m in members}
+
     items = []
     for bot in bots:
-        items.append(BotResponse.model_validate(bot))
+        resp = BotResponse.model_validate(bot)
+        bg = bot_group_map.get(bot.id)
+        if bg:
+            resp.bot_group_id = bg.id
+            resp.bot_group_name = bg.name
+        items.append(resp)
 
     return APIResponse(
         data=BotListResponse(items=items, total=len(items)).model_dump()

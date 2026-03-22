@@ -4,6 +4,7 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.blacklist import router as blacklist_router
 from app.api.v1.bots import router as bots_router
+from app.api.v1.bot_groups import router as bot_groups_router
 from app.api.v1.faq import router as faq_router
 from app.api.v1.conversations import router as conversations_router
 from app.api.v1.media import router as media_router
@@ -26,6 +27,7 @@ router.include_router(messages_router, prefix="/conversations", tags=["Messages"
 router.include_router(users_router, prefix="/users", tags=["Users"])
 router.include_router(media_router, prefix="/messages", tags=["Media"])
 router.include_router(bots_router, prefix="/bots", tags=["Bots"])
+router.include_router(bot_groups_router, prefix="/bot-groups", tags=["Bot Groups"])
 router.include_router(tags_router, tags=["Tags & Groups"])
 router.include_router(blacklist_router, prefix="/blacklist", tags=["Blacklist"])
 router.include_router(faq_router, prefix="/faq", tags=["FAQ"])

@@ -76,6 +76,7 @@ class FAQRuleCreate(BaseModel):
     ai_config: Dict[str, Any] = Field(default_factory=dict)
     priority: int = Field(default=0, ge=0)
     daily_ai_limit: Optional[int] = Field(None, ge=0)
+    category_id: Optional[int] = None
     is_active: bool = True
 
 
@@ -93,6 +94,7 @@ class FAQRuleUpdate(BaseModel):
     ai_config: Optional[Dict[str, Any]] = None
     priority: Optional[int] = Field(None, ge=0)
     daily_ai_limit: Optional[int] = Field(None, ge=0)
+    category_id: Optional[int] = None
     is_active: Optional[bool] = None
 
 
@@ -104,6 +106,10 @@ class FAQRuleResponse(BaseModel):
     ai_config: Dict[str, Any] = {}
     priority: int = 0
     daily_ai_limit: Optional[int] = None
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    faq_group_id: Optional[int] = None
+    faq_group_name: Optional[str] = None
     is_active: bool
     questions: List[FAQQuestionResponse] = []
     answers: List[FAQAnswerResponse] = []

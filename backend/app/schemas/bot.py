@@ -34,6 +34,8 @@ class BotResponse(BaseModel):
     is_rate_limited: bool = False
     rate_limit_until: Optional[datetime] = None
     priority: int = 0
+    bot_group_id: Optional[int] = None
+    bot_group_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

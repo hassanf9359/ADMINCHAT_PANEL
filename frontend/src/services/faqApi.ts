@@ -3,6 +3,8 @@ import type {
   FAQQuestion,
   FAQAnswer,
   FAQRule,
+  FAQGroup,
+  FAQCategory,
   FAQRankingItem,
   MissedKeyword,
   MatchMode,
@@ -76,6 +78,7 @@ export interface FAQRuleCreateData {
   ai_config?: Record<string, unknown>;
   priority?: number;
   daily_ai_limit?: number;
+  category_id?: number | null;
   is_active?: boolean;
 }
 
@@ -88,12 +91,15 @@ export interface FAQRuleUpdateData {
   ai_config?: Record<string, unknown>;
   priority?: number;
   daily_ai_limit?: number;
+  category_id?: number | null;
   is_active?: boolean;
 }
 
 export async function getRules(params?: {
   reply_mode?: string;
   is_active?: boolean;
+  category_id?: number;
+  group_id?: number;
 }): Promise<FAQRule[]> {
   const { data } = await api.get('/faq/rules', { params });
   return data.data;
@@ -144,4 +150,64 @@ export async function getMissedKeywords(): Promise<MissedKeyword[]> {
 
 export async function deleteMissedKeyword(id: number): Promise<void> {
   await api.delete(`/faq/missed-keywords/${id}`);
+}
+
+// ---- FAQ Groups ----
+
+export async function getFAQGroups(): Promise<FAQGroup[]> {
+  const { data } = await api.get('/faq/groups');
+  return data.data;
+}
+
+export async function createFAQGroup(body: {
+  name: string;
+  description?: string;
+  bot_group_id?: number | null;
+  is_active?: boolean;
+}): Promise<FAQGroup> {
+  const { data } = await api.post('/faq/groups', body);
+  return data.data;
+}
+
+export async function updateFAQGroup(
+  id: number,
+  body: Partial<{ name: string; description: string; bot_group_id: number | null; is_active: boolean }>
+): Promise<FAQGroup> {
+  const { data } = await api.patch(`/faq/groups/${id}`, body);
+  return data.data;
+}
+
+export async function deleteFAQGroup(id: number): Promise<void> {
+  await api.delete(`/faq/groups/${id}`);
+}
+
+// ---- FAQ Categories ----
+
+export async function getFAQCategories(groupId?: number): Promise<FAQCategory[]> {
+  const { data } = await api.get('/faq/categories', {
+    params: groupId ? { group_id: groupId } : {},
+  });
+  return data.data;
+}
+
+export async function createFAQCategory(body: {
+  name: string;
+  faq_group_id: number;
+  bot_group_id?: number | null;
+  is_active?: boolean;
+}): Promise<FAQCategory> {
+  const { data } = await api.post('/faq/categories', body);
+  return data.data;
+}
+
+export async function updateFAQCategory(
+  id: number,
+  body: Partial<{ name: string; bot_group_id: number | null; is_active: boolean }>
+): Promise<FAQCategory> {
+  const { data } = await api.patch(`/faq/categories/${id}`, body);
+  return data.data;
+}
+
+export async function deleteFAQCategory(id: number): Promise<void> {
+  await api.delete(`/faq/categories/${id}`);
 }

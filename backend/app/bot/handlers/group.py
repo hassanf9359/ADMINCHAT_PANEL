@@ -19,6 +19,8 @@ from app.models.message import Message
 from app.models.stats import FaqHitStat, UnmatchedMessage
 from app.services.realtime import publish_new_message, publish_conversation_update
 from app.faq.engine import match as faq_match
+from app.bot.rate_limiter import get_bot_from_group
+from app.bot.dispatcher import get_bot_instance
 
 logger = logging.getLogger(__name__)
 
@@ -340,6 +342,18 @@ async def handle_group_message(
                                 logger.exception("AI processing failed in group handler")
 
                         if final_answers:
+                            # Determine which bot to use for sending
+                            send_bot_id = bot_db_id
+                            route_bot = None
+                            if faq_result.bot_group_id:
+                                route_bot = await get_bot_from_group(session, faq_result.bot_group_id)
+                                if route_bot:
+                                    send_bot_id = route_bot.id
+                                    logger.info(
+                                        "FAQ routing: using bot id=%s from group %s",
+                                        route_bot.id, faq_result.bot_group_id,
+                                    )
+
                             for answer in final_answers:
                                 try:
                                     if reply_sender_type == "ai":
@@ -347,13 +361,27 @@ async def handle_group_message(
                                     else:
                                         label = "✦ FAQ"
                                     tg_reply = f"<b>{label}</b>\n\n{answer}"
-                                    await message.reply(tg_reply, parse_mode="HTML")
+
+                                    # Send via routing bot if available
+                                    if route_bot:
+                                        route_aiogram = get_bot_instance(route_bot.id)
+                                        if route_aiogram:
+                                            await route_aiogram.send_message(
+                                                chat_id=message.chat.id,
+                                                text=tg_reply,
+                                                reply_to_message_id=message.message_id,
+                                                parse_mode="HTML",
+                                            )
+                                        else:
+                                            await message.reply(tg_reply, parse_mode="HTML")
+                                    else:
+                                        await message.reply(tg_reply, parse_mode="HTML")
 
                                     faq_msg = Message(
                                         conversation_id=conv.id,
                                         direction="outbound",
                                         sender_type=reply_sender_type,
-                                        via_bot_id=bot_db_id,
+                                        via_bot_id=send_bot_id,
                                         content_type="text",
                                         text_content=answer,
                                         faq_matched=True,

@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.faq import FaqRule, FaqRuleQuestion, FaqRuleAnswer
+from app.models.faq import FaqCategory, FaqRule, FaqRuleQuestion, FaqRuleAnswer
 from app.faq.matcher import MATCHERS, MODE_PRIORITY
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,23 @@ class FAQMatchResult:
     answer_media_file_ids: List[Optional[str]] = field(default_factory=list)
     reply_mode: str = "direct"
     response_mode: str = "single"
+    bot_group_id: Optional[int] = None
+
+
+def _resolve_bot_group_id(rule: FaqRule) -> Optional[int]:
+    """
+    Resolve the bot_group_id for a matched rule using inheritance:
+      category.bot_group_id → faq_group.bot_group_id → None
+    """
+    cat = rule.category
+    if cat is None:
+        return None
+    if cat.bot_group_id is not None:
+        return cat.bot_group_id
+    grp = cat.faq_group
+    if grp is not None and grp.bot_group_id is not None:
+        return grp.bot_group_id
+    return None
 
 
 async def match(text: str, db: AsyncSession) -> Optional[FAQMatchResult]:
@@ -50,13 +67,14 @@ async def match(text: str, db: AsyncSession) -> Optional[FAQMatchResult]:
 
     text = text.strip()
 
-    # Load all active rules with their questions and answers eagerly
+    # Load all active rules with their questions, answers, and category chain
     stmt = (
         select(FaqRule)
         .where(FaqRule.is_active.is_(True))
         .options(
             selectinload(FaqRule.rule_questions).selectinload(FaqRuleQuestion.question),
             selectinload(FaqRule.rule_answers).selectinload(FaqRuleAnswer.answer),
+            selectinload(FaqRule.category).selectinload(FaqCategory.faq_group),
         )
         .order_by(FaqRule.priority.desc(), FaqRule.id.asc())
     )
@@ -98,6 +116,7 @@ async def match(text: str, db: AsyncSession) -> Optional[FAQMatchResult]:
                     answer_media_file_ids=[a.get("media_file_id") for a in answers],
                     reply_mode=rule.reply_mode,
                     response_mode=rule.response_mode,
+                    bot_group_id=_resolve_bot_group_id(rule),
                 )
 
     return None
