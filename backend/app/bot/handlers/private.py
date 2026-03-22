@@ -304,21 +304,19 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
 
                         if final_answers:
                             for answer_text in final_answers:
-                                # Send badge image + caption
+                                # Send sticker badge + text message
                                 import os
                                 from aiogram.types import FSInputFile
                                 assets_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
-                                badge_file = os.path.join(assets_dir, f"badge_{reply_sender_type}.png")
+                                sticker_file = os.path.join(assets_dir, f"sticker_{reply_sender_type}.webp")
 
-                                if os.path.exists(badge_file):
+                                if os.path.exists(sticker_file):
                                     try:
-                                        photo = FSInputFile(badge_file)
-                                        await message.answer_photo(photo=photo, caption=answer_text)
+                                        sticker = FSInputFile(sticker_file)
+                                        await message.answer_sticker(sticker=sticker)
                                     except Exception:
-                                        logger.warning("Failed to send badge image, falling back to text")
-                                        await message.answer(answer_text)
-                                else:
-                                    await message.answer(answer_text)
+                                        logger.warning("Failed to send sticker badge")
+                                await message.answer(answer_text)
 
                                 # Store reply in DB
                                 faq_msg = Message(

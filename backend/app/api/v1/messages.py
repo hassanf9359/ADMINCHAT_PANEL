@@ -307,33 +307,24 @@ async def send_message(
             if tg_user and effective_bot_id:
                 bot_instance = get_bot_instance(effective_bot_id)
                 if bot_instance:
-                    # Send badge image + caption for human replies
                     import os
                     from aiogram.types import FSInputFile
                     assets_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
-                    badge_file = os.path.join(assets_dir, "badge_admin.png")
-                    sent_with_badge = False
+                    sticker_file = os.path.join(assets_dir, "sticker_admin.webp")
 
                     if conv.source_type == "private":
-                        if os.path.exists(badge_file) and text_content:
+                        # Send sticker badge + text
+                        if os.path.exists(sticker_file):
                             try:
-                                photo = FSInputFile(badge_file)
-                                await bot_instance.send_photo(
-                                    chat_id=tg_user.tg_uid,
-                                    photo=photo,
-                                    caption=text_content,
-                                    parse_mode=parse_mode if parse_mode else None,
-                                )
-                                sent_with_badge = True
+                                sticker = FSInputFile(sticker_file)
+                                await bot_instance.send_sticker(chat_id=tg_user.tg_uid, sticker=sticker)
                             except Exception:
-                                logger.warning("Failed to send badge, falling back to text")
-
-                        if not sent_with_badge:
-                            await bot_instance.send_message(
-                                chat_id=tg_user.tg_uid,
-                                text=text_content or "",
-                                parse_mode=parse_mode if parse_mode else None,
-                            )
+                                logger.warning("Failed to send sticker badge")
+                        await bot_instance.send_message(
+                            chat_id=tg_user.tg_uid,
+                            text=text_content or "",
+                            parse_mode=parse_mode if parse_mode else None,
+                        )
                     elif conv.source_type == "group" and conv.source_group_id:
                         # Group chat: send to group, reply to user's last message
                         group_result = await db.execute(
@@ -354,24 +345,20 @@ async def send_message(
                             )
                             reply_to_id = last_inbound.scalar_one_or_none()
 
-                            if os.path.exists(badge_file) and text_content:
+                            if os.path.exists(sticker_file):
                                 try:
-                                    photo = FSInputFile(badge_file)
-                                    await bot_instance.send_photo(
+                                    sticker = FSInputFile(sticker_file)
+                                    await bot_instance.send_sticker(
                                         chat_id=group.tg_chat_id,
-                                        photo=photo,
-                                        caption=text_content,
-                                        parse_mode=parse_mode if parse_mode else None,
+                                        sticker=sticker,
                                         reply_to_message_id=reply_to_id,
                                     )
-                                    sent_with_badge = True
                                 except Exception:
-                                    logger.warning("Failed to send badge in group")
+                                    logger.warning("Failed to send sticker in group")
 
-                            if not sent_with_badge:
-                                await bot_instance.send_message(
-                                    chat_id=group.tg_chat_id,
-                                    text=text_content or "",
+                            await bot_instance.send_message(
+                                chat_id=group.tg_chat_id,
+                                text=text_content or "",
                                 parse_mode=parse_mode if parse_mode else None,
                                 reply_to_message_id=reply_to_id,
                             )
