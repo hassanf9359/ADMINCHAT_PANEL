@@ -238,18 +238,78 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                                 )
                             )
 
-                        # Send auto-reply if reply_mode is 'direct'
-                        if faq_result.reply_mode == "direct" and faq_result.answers:
-                            for answer_text in faq_result.answers:
-                                # Prepend FAQ prefix for user-facing message
-                                tg_reply = f"基于FAQ自动回复\n\n{answer_text}"
+                        # Process reply based on reply_mode
+                        final_answers = list(faq_result.answers) if faq_result.answers else []
+                        reply_sender_type = "faq"
+
+                        if faq_result.reply_mode != "direct" and final_answers:
+                            # AI processing modes
+                            try:
+                                from app.faq.ai_handler import AIHandler, AIConfig as AIRuntimeConfig
+                                from app.models.ai_config import AiConfig
+
+                                # Get first active AI config
+                                ai_cfg_result = await session.execute(
+                                    select(AiConfig).where(AiConfig.is_active.is_(True)).limit(1)
+                                )
+                                ai_cfg = ai_cfg_result.scalar_one_or_none()
+
+                                if ai_cfg:
+                                    handler = AIHandler()
+                                    runtime = AIRuntimeConfig(
+                                        base_url=ai_cfg.base_url,
+                                        api_key=ai_cfg.api_key,
+                                        model=ai_cfg.model or "gpt-5-codex",
+                                        max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
+                                        temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
+                                        api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
+                                    )
+
+                                    if faq_result.reply_mode == "ai_polish":
+                                        # Polish the preset answer with AI
+                                        ai_resp = await handler.reply_ai_polish(
+                                            text_content, final_answers[0], runtime
+                                        )
+                                        final_answers = [ai_resp.content]
+                                        reply_sender_type = "ai"
+                                    elif faq_result.reply_mode == "ai_only":
+                                        ai_resp = await handler.reply_ai_only(text_content, runtime)
+                                        final_answers = [ai_resp.content]
+                                        reply_sender_type = "ai"
+                                    elif faq_result.reply_mode == "ai_fallback":
+                                        # FAQ matched, so use FAQ answer (AI only if no match)
+                                        pass  # keep final_answers as-is
+                                    elif faq_result.reply_mode == "ai_classify_and_answer":
+                                        faq_context = "\n".join(final_answers)
+                                        ai_resp = await handler.reply_ai_classify_and_answer(
+                                            text_content, faq_context, runtime
+                                        )
+                                        final_answers = [ai_resp.content]
+                                        reply_sender_type = "ai"
+                                    else:
+                                        # Other modes: use preset answer for now
+                                        pass
+
+                                    await handler.close()
+                                else:
+                                    logger.warning("AI mode %s but no AI config found, falling back to direct", faq_result.reply_mode)
+                            except Exception:
+                                logger.exception("AI processing failed for reply_mode=%s, falling back to direct answer", faq_result.reply_mode)
+
+                        if final_answers:
+                            for answer_text in final_answers:
+                                # Prepend prefix based on sender type
+                                if reply_sender_type == "ai":
+                                    tg_reply = f"基于AI回复\n\n{answer_text}"
+                                else:
+                                    tg_reply = f"基于FAQ自动回复\n\n{answer_text}"
                                 await message.answer(tg_reply)
 
-                                # Store FAQ reply in DB so it shows in web panel
+                                # Store reply in DB
                                 faq_msg = Message(
                                     conversation_id=conv.id,
                                     direction="outbound",
-                                    sender_type="faq",
+                                    sender_type=reply_sender_type,
                                     via_bot_id=bot_db_id,
                                     content_type="text",
                                     text_content=answer_text,
@@ -260,14 +320,13 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                                 session.add(faq_msg)
                                 await session.flush()
 
-                                # Push to WebSocket
                                 await publish_new_message(
                                     conversation_id=conv.id,
                                     message_data={
                                         "id": faq_msg.id,
                                         "conversation_id": conv.id,
                                         "direction": "outbound",
-                                        "sender_type": "faq",
+                                        "sender_type": reply_sender_type,
                                         "content_type": "text",
                                         "text_content": answer_text,
                                         "faq_matched": True,
