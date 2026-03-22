@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Bot, Download, User } from 'lucide-react';
+import { Download, User, Sparkles, BookOpen } from 'lucide-react';
 import type { Message } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { formatTime } from '../../utils/time';
@@ -12,7 +12,6 @@ interface MessageBubbleProps {
 function MessageBubbleInner({ message }: MessageBubbleProps) {
   const isInbound = message.direction === 'incoming' || message.direction === 'inbound';
   const isFaq = message.faq_matched || message.sender_type === 'faq';
-  const isBot = message.sender_type === 'bot';
   const isAdmin = message.sender_type === 'admin';
   const token = useAuthStore((s) => s.token);
 
@@ -25,14 +24,6 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
     }
     return 'bg-[#00D9FF15] border-[#00D9FF30] rounded-[12px_12px_2px_12px]';
   }, [isInbound, isFaq]);
-
-  const senderLabel = useMemo(() => {
-    if (isInbound) return null;
-    if (isFaq) return 'FAQ Auto';
-    if (isAdmin) return message.sender_admin_name || 'Admin';
-    if (isBot) return 'Bot';
-    return 'System';
-  }, [isInbound, isFaq, isAdmin, isBot, message.sender_admin_name]);
 
   const botTag = message.sent_by_bot_name || message.via_bot_name;
 
@@ -52,21 +43,27 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
       <div
         className={`max-w-[70%] border px-3.5 py-2.5 ${bubbleClasses}`}
       >
-        {/* Sender label */}
-        {senderLabel && (
-          <div className="flex items-center gap-1.5 mb-1">
-            {isFaq ? (
-              <Bot size={12} className="text-[#059669]" />
-            ) : isAdmin ? (
-              <User size={12} className="text-[#00D9FF]" />
-            ) : null}
-            <span
-              className={`text-[10px] font-semibold font-['JetBrains_Mono'] ${
-                isFaq ? 'text-[#059669]' : 'text-[#00D9FF]'
-              }`}
-            >
-              {senderLabel}
-            </span>
+        {/* Source badge */}
+        {!isInbound && (
+          <div className="flex items-center gap-2 mb-2">
+            {isFaq && message.sender_type !== 'ai' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#059669] text-white text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
+                <BookOpen size={12} />
+                FAQ
+              </span>
+            )}
+            {message.sender_type === 'ai' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#8B5CF6] text-white text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
+                <Sparkles size={12} />
+                AI
+              </span>
+            )}
+            {isAdmin && !isFaq && message.sender_type !== 'ai' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#00D9FF] text-[#0C0C0C] text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
+                <User size={12} />
+                Human
+              </span>
+            )}
             {botTag && (
               <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono']">
                 via {botTag}

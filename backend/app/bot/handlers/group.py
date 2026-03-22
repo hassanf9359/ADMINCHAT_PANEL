@@ -343,9 +343,9 @@ async def handle_group_message(
                             for answer in final_answers:
                                 try:
                                     if reply_sender_type == "ai":
-                                        tg_reply = f"来自AI回复\n\n{answer}"
+                                        tg_reply = f"【AI】\n{answer}"
                                     else:
-                                        tg_reply = f"基于FAQ自动回复\n\n{answer}"
+                                        tg_reply = f"【FAQ】\n{answer}"
                                     await message.reply(tg_reply)
 
                                     faq_msg = Message(
