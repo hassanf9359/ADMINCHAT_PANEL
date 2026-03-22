@@ -14,11 +14,11 @@ import {
 } from '../services/faqApi';
 import type { MatchMode, ResponseMode, ReplyMode } from '../types';
 
-const MATCH_MODES: { value: MatchMode; label: string }[] = [
-  { value: 'exact', label: 'Exact' },
-  { value: 'prefix', label: 'Prefix' },
-  { value: 'contains', label: 'Contains' },
-  { value: 'regex', label: 'Regex' },
+const MATCH_MODES: { value: MatchMode; label: string; desc: string }[] = [
+  { value: 'exact', label: 'Exact Match', desc: 'Full text must match keyword exactly' },
+  { value: 'prefix', label: 'Prefix Match', desc: 'Text must start with keyword' },
+  { value: 'contains', label: 'Contains', desc: 'Keyword found anywhere in text' },
+  { value: 'regex', label: 'Regex', desc: 'Regular expression pattern matching' },
 ];
 
 const RESPONSE_MODES: { value: ResponseMode; label: string }[] = [
@@ -27,15 +27,16 @@ const RESPONSE_MODES: { value: ResponseMode; label: string }[] = [
   { value: 'all', label: 'All' },
 ];
 
-const REPLY_MODES: { value: ReplyMode; label: string }[] = [
-  { value: 'direct', label: 'Direct (keyword match)' },
-  { value: 'ai_only', label: 'AI Only' },
-  { value: 'ai_polish', label: 'AI Polish' },
-  { value: 'ai_fallback', label: 'AI Fallback' },
-  { value: 'ai_intent', label: 'AI Intent' },
-  { value: 'ai_template', label: 'AI Template' },
-  { value: 'rag', label: 'RAG (reserved)' },
-  { value: 'ai_classify_and_answer', label: 'AI Classify & Answer' },
+// AI modes: "direct" means disabled (no AI), rest are AI processing modes
+const AI_MODES: { value: ReplyMode; label: string; desc: string }[] = [
+  { value: 'direct', label: 'Disabled', desc: 'No AI — return preset answer directly' },
+  { value: 'ai_polish', label: 'AI Polish', desc: 'Match answer → AI rewrites for natural tone' },
+  { value: 'ai_fallback', label: 'AI Fallback', desc: 'Try FAQ first, AI if no match' },
+  { value: 'ai_only', label: 'AI Only', desc: 'Send question directly to AI (rate limited)' },
+  { value: 'ai_intent', label: 'AI Intent', desc: 'AI classifies intent → routes to FAQ category' },
+  { value: 'ai_template', label: 'AI Template', desc: 'Preset template + AI fills dynamic content' },
+  { value: 'ai_classify_and_answer', label: 'AI Comprehensive', desc: 'AI answers using FAQ knowledge base' },
+  { value: 'rag', label: 'RAG (reserved)', desc: 'Vector retrieval + AI answer (coming soon)' },
 ];
 
 export default function FAQEditor() {
@@ -62,6 +63,9 @@ export default function FAQEditor() {
   const [showNewAnswer, setShowNewAnswer] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  const aiEnabled = replyMode !== 'direct';
 
   // Fetch all questions and answers
   const { data: allQuestions = [], refetch: refetchQuestions } = useQuery({
@@ -76,7 +80,6 @@ export default function FAQEditor() {
     staleTime: 60_000,
   });
 
-  // Memoize selected question/answer ID arrays for stable references
   const selectedQuestionArray = useMemo(() => Array.from(selectedQuestionIds), [selectedQuestionIds]);
   const selectedAnswerArray = useMemo(() => Array.from(selectedAnswerIds), [selectedAnswerIds]);
 
@@ -87,7 +90,6 @@ export default function FAQEditor() {
     enabled: !isNew && !!id,
   });
 
-  // Pre-fill from search params (e.g. from MissedKnowledge page)
   useEffect(() => {
     const prefillKeyword = searchParams.get('keyword');
     if (prefillKeyword && isNew) {
@@ -96,7 +98,6 @@ export default function FAQEditor() {
     }
   }, [searchParams, isNew]);
 
-  // Populate form when editing
   useEffect(() => {
     if (existingRule) {
       setName(existingRule.name || '');
@@ -109,12 +110,10 @@ export default function FAQEditor() {
     }
   }, [existingRule]);
 
-  // Toggle helpers
   const toggleQuestion = useCallback((qId: number) => {
     setSelectedQuestionIds((prev) => {
       const next = new Set(prev);
-      if (next.has(qId)) next.delete(qId);
-      else next.add(qId);
+      if (next.has(qId)) next.delete(qId); else next.add(qId);
       return next;
     });
   }, []);
@@ -122,19 +121,13 @@ export default function FAQEditor() {
   const toggleAnswer = useCallback((aId: number) => {
     setSelectedAnswerIds((prev) => {
       const next = new Set(prev);
-      if (next.has(aId)) next.delete(aId);
-      else next.add(aId);
+      if (next.has(aId)) next.delete(aId); else next.add(aId);
       return next;
     });
   }, []);
 
-  // Create new question inline
   const createQuestionMutation = useMutation({
-    mutationFn: () =>
-      createQuestion({
-        keyword: newQuestionKeyword,
-        match_mode: newQuestionMode,
-      }),
+    mutationFn: () => createQuestion({ keyword: newQuestionKeyword, match_mode: newQuestionMode }),
     onSuccess: (newQ) => {
       refetchQuestions();
       setSelectedQuestionIds((prev) => new Set([...prev, newQ.id]));
@@ -143,13 +136,8 @@ export default function FAQEditor() {
     },
   });
 
-  // Create new answer inline
   const createAnswerMutation = useMutation({
-    mutationFn: () =>
-      createAnswer({
-        content: newAnswerContent,
-        content_type: 'text',
-      }),
+    mutationFn: () => createAnswer({ content: newAnswerContent, content_type: 'text' }),
     onSuccess: (newA) => {
       refetchAnswers();
       setSelectedAnswerIds((prev) => new Set([...prev, newA.id]));
@@ -158,9 +146,9 @@ export default function FAQEditor() {
     },
   });
 
-  // Save rule
   const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
     try {
       const payload = {
         name: name || undefined,
@@ -180,7 +168,9 @@ export default function FAQEditor() {
 
       queryClient.invalidateQueries({ queryKey: ['faq-rules'] });
       navigate('/faq');
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Failed to save rule';
+      setSaveError(msg);
       console.error('Failed to save rule:', err);
     } finally {
       setSaving(false);
@@ -191,14 +181,10 @@ export default function FAQEditor() {
     <div className="flex flex-col h-full">
       <Header title={isNew ? 'New FAQ Rule' : `Edit FAQ Rule #${id}`} />
       <div className="flex-1 px-8 py-6 overflow-auto">
-        {/* Header row: back + title + Cancel + Save */}
+        {/* Header row */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/faq')}
-              className="p-2 rounded-md hover:bg-[#141414] text-[#8a8a8a] hover:text-white transition-colors"
-              title="Back"
-            >
+            <button onClick={() => navigate('/faq')} className="p-2 rounded-md hover:bg-[#141414] text-[#8a8a8a] hover:text-white transition-colors" title="Back">
               <ArrowLeft size={18} />
             </button>
             <h2 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">
@@ -206,165 +192,203 @@ export default function FAQEditor() {
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/faq')}
-              className="px-4 py-2 rounded-lg text-sm text-[#8a8a8a] border border-[#2f2f2f] hover:text-white hover:bg-[#141414] transition-colors"
-            >
+            <button onClick={() => navigate('/faq')} className="px-4 py-2 rounded-lg text-sm text-[#8a8a8a] border border-[#2f2f2f] hover:text-white hover:bg-[#141414] transition-colors">
               Cancel
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-[#00D9FF] text-black hover:opacity-90 disabled:opacity-40 transition-opacity"
-            >
+            <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-medium bg-[#00D9FF] text-black hover:opacity-90 disabled:opacity-40 transition-opacity flex items-center gap-2">
+              <Save size={14} />
               {saving ? 'Saving...' : 'Save Rule'}
             </button>
           </div>
         </div>
 
-        {/* Form row: Rule Name + Match Mode + Reply Mode */}
-        <div className="flex items-end gap-4 mb-6">
-          <div className="flex-1">
-            <label className="block text-[13px] font-medium text-[#8a8a8a] mb-2 font-['Inter']">Rule Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Rule name..."
-              className="w-full h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
-            />
+        {/* Error message */}
+        {saveError && (
+          <div className="mb-4 px-4 py-3 bg-[#FF4444]/10 border border-[#FF4444]/30 rounded-lg text-sm text-[#FF4444]">
+            {saveError}
           </div>
-          <div className="w-44">
-            <label className="block text-[13px] font-medium text-[#8a8a8a] mb-2 font-['Inter']">Response Mode</label>
-            <select
-              value={responseMode}
-              onChange={(e) => setResponseMode(e.target.value as ResponseMode)}
-              className="w-full h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white focus:outline-none focus:border-[#00D9FF] transition-colors"
-            >
-              {RESPONSE_MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
+        )}
+
+        {/* Form row 1: Rule Name */}
+        <div className="mb-5">
+          <label className="block text-[13px] font-medium text-[#8a8a8a] mb-2">Rule Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Pricing Related"
+            className="w-full h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+          />
+        </div>
+
+        {/* Form row 2: Match Mode + AI Mode + Response Mode */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {/* Match Mode - how keywords are matched */}
+          <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] p-4">
+            <label className="block text-[13px] font-semibold text-[#00D9FF] mb-1">Match Mode</label>
+            <p className="text-[11px] text-[#6a6a6a] mb-3">How keywords are matched against user messages</p>
+            <div className="space-y-1.5">
+              {MATCH_MODES.map((m) => (
+                <label key={m.value} className={`flex items-center gap-2.5 px-3 py-2 rounded-md cursor-pointer transition-colors ${newQuestionMode === m.value ? 'bg-[#00D9FF]/10 border border-[#00D9FF]/30' : 'hover:bg-[#141414] border border-transparent'}`}>
+                  <input
+                    type="radio"
+                    name="matchMode"
+                    value={m.value}
+                    checked={newQuestionMode === m.value}
+                    onChange={() => setNewQuestionMode(m.value)}
+                    className="accent-[#00D9FF]"
+                  />
+                  <div>
+                    <span className="text-sm text-white font-medium">{m.label}</span>
+                    <p className="text-[10px] text-[#6a6a6a]">{m.desc}</p>
+                  </div>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
-          <div className="w-52">
-            <label className="block text-[13px] font-medium text-[#8a8a8a] mb-2 font-['Inter']">Reply Mode</label>
-            <select
-              value={replyMode}
-              onChange={(e) => setReplyMode(e.target.value as ReplyMode)}
-              className="w-full h-10 px-3.5 bg-[#141414] border border-[#00D9FF]/30 rounded-lg text-sm text-[#00D9FF] focus:outline-none focus:border-[#00D9FF] transition-colors"
-            >
-              {REPLY_MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
+
+          {/* AI Mode - how AI processes the answer */}
+          <div className={`bg-[#0A0A0A] border rounded-[10px] p-4 ${aiEnabled ? 'border-[#8B5CF6]/40' : 'border-[#2f2f2f]'}`}>
+            <label className="block text-[13px] font-semibold text-[#8B5CF6] mb-1">AI Mode</label>
+            <p className="text-[11px] text-[#6a6a6a] mb-3">Whether AI processes or enhances the reply</p>
+            <div className="space-y-1.5">
+              {AI_MODES.map((m) => (
+                <label key={m.value} className={`flex items-center gap-2.5 px-3 py-2 rounded-md cursor-pointer transition-colors ${replyMode === m.value ? (m.value === 'direct' ? 'bg-[#2f2f2f]/50 border border-[#2f2f2f]' : 'bg-[#8B5CF6]/10 border border-[#8B5CF6]/30') : 'hover:bg-[#141414] border border-transparent'}`}>
+                  <input
+                    type="radio"
+                    name="aiMode"
+                    value={m.value}
+                    checked={replyMode === m.value}
+                    onChange={() => setReplyMode(m.value as ReplyMode)}
+                    className="accent-[#8B5CF6]"
+                  />
+                  <div className="min-w-0">
+                    <span className={`text-sm font-medium ${m.value === 'direct' ? 'text-[#8a8a8a]' : 'text-white'}`}>{m.label}</span>
+                    <p className="text-[10px] text-[#6a6a6a] truncate">{m.desc}</p>
+                  </div>
+                </label>
               ))}
-            </select>
+            </div>
+          </div>
+
+          {/* Response Mode + Priority + AI Limit */}
+          <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] p-4">
+            <label className="block text-[13px] font-semibold text-[#059669] mb-1">Settings</label>
+            <p className="text-[11px] text-[#6a6a6a] mb-3">Response behavior and limits</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] text-[#8a8a8a] mb-1.5">Response Mode</label>
+                <select
+                  value={responseMode}
+                  onChange={(e) => setResponseMode(e.target.value as ResponseMode)}
+                  className="w-full h-9 px-3 bg-[#141414] border border-[#2f2f2f] rounded-md text-sm text-white focus:outline-none focus:border-[#059669] transition-colors"
+                >
+                  {RESPONSE_MODES.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-[#6a6a6a] mt-1">
+                  {responseMode === 'single' ? 'Return first matched answer' : responseMode === 'random' ? 'Pick random from matched answers' : 'Return all matched answers'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#8a8a8a] mb-1.5">Priority</label>
+                <input
+                  type="number"
+                  value={priority}
+                  onChange={(e) => setPriority(Number(e.target.value))}
+                  min={0}
+                  className="w-full h-9 px-3 bg-[#141414] border border-[#2f2f2f] rounded-md text-sm text-white font-['JetBrains_Mono'] focus:outline-none focus:border-[#059669] transition-colors"
+                />
+                <p className="text-[10px] text-[#6a6a6a] mt-1">Higher = matched first</p>
+              </div>
+
+              {aiEnabled && (
+                <div>
+                  <label className="block text-[11px] text-[#8a8a8a] mb-1.5">AI Daily Limit (per user)</label>
+                  <input
+                    type="number"
+                    value={dailyAiLimit}
+                    onChange={(e) => setDailyAiLimit(e.target.value === '' ? '' : Number(e.target.value))}
+                    min={0}
+                    placeholder="unlimited"
+                    className="w-full h-9 px-3 bg-[#141414] border border-[#8B5CF6]/30 rounded-md text-sm text-[#8B5CF6] font-['JetBrains_Mono'] placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#8B5CF6] transition-colors"
+                  />
+                  <p className="text-[10px] text-[#6a6a6a] mt-1">Max AI replies per user per day</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Split panel */}
+        {/* Flow preview */}
+        <div className="mb-6 px-4 py-3 bg-[#141414] border border-[#2f2f2f] rounded-lg">
+          <span className="text-[11px] text-[#6a6a6a]">Flow: </span>
+          <span className="text-[11px] text-[#00D9FF] font-['JetBrains_Mono']">
+            User message → {MATCH_MODES.find(m => m.value === newQuestionMode)?.label || 'Contains'} match
+          </span>
+          <span className="text-[11px] text-[#6a6a6a]"> → </span>
+          <span className="text-[11px] text-[#059669] font-['JetBrains_Mono']">
+            {RESPONSE_MODES.find(m => m.value === responseMode)?.label || 'Single'} answer
+          </span>
+          {aiEnabled && (
+            <>
+              <span className="text-[11px] text-[#6a6a6a]"> → </span>
+              <span className="text-[11px] text-[#8B5CF6] font-['JetBrains_Mono']">
+                {AI_MODES.find(m => m.value === replyMode)?.label || 'AI'}
+              </span>
+            </>
+          )}
+          <span className="text-[11px] text-[#6a6a6a]"> → Reply to user</span>
+        </div>
+
+        {/* Split panel: Questions + Answers */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {/* LEFT - Questions (blue border) */}
+          {/* LEFT - Questions (blue) */}
           <div className="bg-[#0A0A0A] border-2 border-[#2563EB40] rounded-[10px] overflow-hidden">
             <div className="px-4 py-3 border-b border-[#2563EB20] flex items-center justify-between">
-              <h3 className="text-sm font-medium text-[#2563EB]">
-                Questions / Keywords
-              </h3>
+              <h3 className="text-sm font-medium text-[#2563EB]">Questions / Keywords</h3>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#2563EB]/10 text-[#2563EB]">
                   {selectedQuestionIds.size} items
                 </span>
-                <button
-                  onClick={() => setShowNewQuestion(true)}
-                  className="text-[11px] font-medium text-[#2563EB] hover:text-[#2563EB]/80 flex items-center gap-0.5"
-                >
+                <button onClick={() => setShowNewQuestion(true)} className="text-[11px] font-medium text-[#2563EB] hover:text-[#2563EB]/80 flex items-center gap-0.5">
                   <Plus size={12} /> Add
                 </button>
               </div>
             </div>
-            <div className="max-h-[400px] overflow-auto">
+            <div className="max-h-[300px] overflow-auto">
               {allQuestions.map((q) => (
-                <label
-                  key={q.id}
-                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-[#1A1A1A] cursor-pointer transition-colors hover:bg-[#141414] ${
-                    selectedQuestionIds.has(q.id) ? 'bg-[#2563EB]/5' : ''
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedQuestionIds.has(q.id)}
-                    onChange={() => toggleQuestion(q.id)}
-                    className="w-4 h-4 rounded accent-[#2563EB]"
-                  />
-                  <span className="flex-1 text-sm text-white truncate">
-                    {q.keyword}
-                  </span>
-                  <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono'] px-1.5 py-0.5 rounded bg-[#141414]">
-                    {q.match_mode}
-                  </span>
+                <label key={q.id} className={`flex items-center gap-3 px-4 py-2.5 border-b border-[#1A1A1A] cursor-pointer transition-colors hover:bg-[#141414] ${selectedQuestionIds.has(q.id) ? 'bg-[#2563EB]/5' : ''}`}>
+                  <input type="checkbox" checked={selectedQuestionIds.has(q.id)} onChange={() => toggleQuestion(q.id)} className="w-4 h-4 rounded accent-[#2563EB]" />
+                  <span className="flex-1 text-sm text-white truncate">{q.keyword}</span>
+                  <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono'] px-1.5 py-0.5 rounded bg-[#141414]">{q.match_mode}</span>
                 </label>
               ))}
-
               {allQuestions.length === 0 && !showNewQuestion && (
-                <p className="text-[#6a6a6a] text-xs text-center py-4">
-                  No questions yet. Add one below.
-                </p>
+                <p className="text-[#6a6a6a] text-xs text-center py-4">No questions yet.</p>
               )}
-
-              {/* Inline new question form */}
               {showNewQuestion && (
                 <div className="flex items-center gap-2 px-4 py-3 border-t border-[#1A1A1A]">
                   <input
-                    type="text"
-                    value={newQuestionKeyword}
-                    onChange={(e) => setNewQuestionKeyword(e.target.value)}
-                    placeholder="Keyword..."
+                    type="text" value={newQuestionKeyword} onChange={(e) => setNewQuestionKeyword(e.target.value)}
+                    placeholder="Keyword..." autoFocus
                     className="flex-1 h-8 px-3 bg-[#141414] border border-[#2f2f2f] rounded text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#2563EB]"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newQuestionKeyword.trim()) {
-                        createQuestionMutation.mutate();
-                      }
-                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && newQuestionKeyword.trim()) createQuestionMutation.mutate(); }}
                   />
-                  <select
-                    value={newQuestionMode}
-                    onChange={(e) => setNewQuestionMode(e.target.value as MatchMode)}
-                    className="h-8 px-2 bg-[#141414] border border-[#2f2f2f] rounded text-xs text-white focus:outline-none"
-                  >
-                    {MATCH_MODES.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
+                  <select value={newQuestionMode} onChange={(e) => setNewQuestionMode(e.target.value as MatchMode)} className="h-8 px-2 bg-[#141414] border border-[#2f2f2f] rounded text-xs text-white focus:outline-none">
+                    {MATCH_MODES.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
                   </select>
-                  <button
-                    onClick={() => createQuestionMutation.mutate()}
-                    disabled={
-                      !newQuestionKeyword.trim() ||
-                      createQuestionMutation.isPending
-                    }
-                    className="p-1.5 rounded bg-[#2563EB] text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-                  >
-                    <Save size={14} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowNewQuestion(false);
-                      setNewQuestionKeyword('');
-                    }}
-                    className="p-1.5 rounded hover:bg-[#141414] text-[#6a6a6a]"
-                  >
-                    <X size={14} />
-                  </button>
+                  <button onClick={() => createQuestionMutation.mutate()} disabled={!newQuestionKeyword.trim() || createQuestionMutation.isPending} className="p-1.5 rounded bg-[#2563EB] text-white hover:opacity-90 disabled:opacity-40"><Save size={14} /></button>
+                  <button onClick={() => { setShowNewQuestion(false); setNewQuestionKeyword(''); }} className="p-1.5 rounded hover:bg-[#141414] text-[#6a6a6a]"><X size={14} /></button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* RIGHT - Answers (green border) */}
+          {/* RIGHT - Answers (green) */}
           <div className="bg-[#0A0A0A] border-2 border-[#05966940] rounded-[10px] overflow-hidden">
             <div className="px-4 py-3 border-b border-[#05966920] flex items-center justify-between">
               <h3 className="text-sm font-medium text-[#059669]">Answers</h3>
@@ -372,112 +396,33 @@ export default function FAQEditor() {
                 <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#059669]/10 text-[#059669]">
                   {selectedAnswerIds.size} items
                 </span>
-                <button
-                  onClick={() => setShowNewAnswer(true)}
-                  className="text-[11px] font-medium text-[#059669] hover:text-[#059669]/80 flex items-center gap-0.5"
-                >
+                <button onClick={() => setShowNewAnswer(true)} className="text-[11px] font-medium text-[#059669] hover:text-[#059669]/80 flex items-center gap-0.5">
                   <Plus size={12} /> Add
                 </button>
               </div>
             </div>
-            <div className="max-h-[400px] overflow-auto">
+            <div className="max-h-[300px] overflow-auto">
               {allAnswers.map((a) => (
-                <label
-                  key={a.id}
-                  className={`flex items-start gap-3 px-4 py-2.5 border-b border-[#1A1A1A] cursor-pointer transition-colors hover:bg-[#141414] ${
-                    selectedAnswerIds.has(a.id) ? 'bg-green/5' : ''
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedAnswerIds.has(a.id)}
-                    onChange={() => toggleAnswer(a.id)}
-                    className="w-4 h-4 mt-0.5 rounded accent-green"
-                  />
-                  <span className="flex-1 text-sm text-white line-clamp-2">
-                    {a.content}
-                  </span>
-                  <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono'] px-1.5 py-0.5 rounded bg-[#141414] shrink-0">
-                    {a.content_type}
-                  </span>
+                <label key={a.id} className={`flex items-start gap-3 px-4 py-2.5 border-b border-[#1A1A1A] cursor-pointer transition-colors hover:bg-[#141414] ${selectedAnswerIds.has(a.id) ? 'bg-[#059669]/5' : ''}`}>
+                  <input type="checkbox" checked={selectedAnswerIds.has(a.id)} onChange={() => toggleAnswer(a.id)} className="w-4 h-4 mt-0.5 rounded accent-[#059669]" />
+                  <span className="flex-1 text-sm text-white line-clamp-2">{a.content}</span>
+                  <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono'] px-1.5 py-0.5 rounded bg-[#141414] shrink-0">{a.content_type}</span>
                 </label>
               ))}
-
               {allAnswers.length === 0 && !showNewAnswer && (
-                <p className="text-[#6a6a6a] text-xs text-center py-4">
-                  No answers yet. Add one below.
-                </p>
+                <p className="text-[#6a6a6a] text-xs text-center py-4">No answers yet.</p>
               )}
-
-              {/* Inline new answer form */}
               {showNewAnswer && (
                 <div className="flex items-start gap-2 px-4 py-3 border-t border-[#1A1A1A]">
-                  <textarea
-                    value={newAnswerContent}
-                    onChange={(e) => setNewAnswerContent(e.target.value)}
-                    placeholder="Answer content..."
-                    rows={3}
-                    className="flex-1 px-3 py-1.5 bg-[#141414] border border-[#2f2f2f] rounded text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-green resize-none"
-                    autoFocus
-                  />
+                  <textarea value={newAnswerContent} onChange={(e) => setNewAnswerContent(e.target.value)} placeholder="Answer content..." rows={3} autoFocus
+                    className="flex-1 px-3 py-1.5 bg-[#141414] border border-[#2f2f2f] rounded text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#059669] resize-none" />
                   <div className="flex flex-col gap-1">
-                    <button
-                      onClick={() => createAnswerMutation.mutate()}
-                      disabled={
-                        !newAnswerContent.trim() ||
-                        createAnswerMutation.isPending
-                      }
-                      className="p-1.5 rounded bg-[#059669] text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-                    >
-                      <Save size={14} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowNewAnswer(false);
-                        setNewAnswerContent('');
-                      }}
-                      className="p-1.5 rounded hover:bg-[#141414] text-[#6a6a6a]"
-                    >
-                      <X size={14} />
-                    </button>
+                    <button onClick={() => createAnswerMutation.mutate()} disabled={!newAnswerContent.trim() || createAnswerMutation.isPending} className="p-1.5 rounded bg-[#059669] text-white hover:opacity-90 disabled:opacity-40"><Save size={14} /></button>
+                    <button onClick={() => { setShowNewAnswer(false); setNewAnswerContent(''); }} className="p-1.5 rounded hover:bg-[#141414] text-[#6a6a6a]"><X size={14} /></button>
                   </div>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Bottom settings */}
-        <div className="flex items-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-[#6a6a6a]">Response:</span>
-            <select
-              value={responseMode}
-              onChange={(e) => setResponseMode(e.target.value as ResponseMode)}
-              className="h-8 px-3 bg-[#141414] border border-[#2f2f2f] rounded-md text-sm text-white focus:outline-none focus:border-[#00D9FF] transition-colors"
-            >
-              {RESPONSE_MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[#6a6a6a]">Priority:</span>
-            <input
-              type="number"
-              value={priority}
-              onChange={(e) => setPriority(Number(e.target.value))}
-              min={0}
-              className="w-16 h-8 px-3 bg-[#141414] border border-[#2f2f2f] rounded-md text-sm text-white font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[#6a6a6a]">AI Limit:</span>
-            <span className="text-[#00D9FF] font-['JetBrains_Mono'] text-sm">
-              {dailyAiLimit === '' ? 'unlimited' : `${dailyAiLimit}/day`}
-            </span>
           </div>
         </div>
       </div>
