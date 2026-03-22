@@ -307,11 +307,12 @@ async def send_message(
             if tg_user and effective_bot_id:
                 bot_instance = get_bot_instance(effective_bot_id)
                 if bot_instance:
+                    tg_text = f"👤 Human\n{text_content}" if text_content else ""
                     if conv.source_type == "private":
                         # Private chat: send directly to user
                         await bot_instance.send_message(
                             chat_id=tg_user.tg_uid,
-                            text=text_content or "",
+                            text=tg_text,
                             parse_mode=parse_mode if parse_mode else None,
                         )
                     elif conv.source_type == "group" and conv.source_group_id:
@@ -336,7 +337,7 @@ async def send_message(
 
                             await bot_instance.send_message(
                                 chat_id=group.tg_chat_id,
-                                text=text_content or "",
+                                text=tg_text,
                                 parse_mode=parse_mode if parse_mode else None,
                                 reply_to_message_id=reply_to_id,
                             )

@@ -306,9 +306,9 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                             for answer_text in final_answers:
                                 # Prepend prefix based on sender type
                                 if reply_sender_type == "ai":
-                                    tg_reply = f"【AI】\n{answer_text}"
+                                    tg_reply = f"🤖 AI 回复\n{answer_text}"
                                 else:
-                                    tg_reply = f"【FAQ】\n{answer_text}"
+                                    tg_reply = f"📖 FAQ 自动回复\n{answer_text}"
                                 await message.answer(tg_reply)
 
                                 # Store reply in DB
