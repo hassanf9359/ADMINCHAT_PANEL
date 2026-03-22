@@ -145,7 +145,19 @@ class AIHandler:
                 async with client.stream(
                     "POST", url, headers=headers, json=payload, timeout=config.timeout,
                 ) as resp:
-                    resp.raise_for_status()
+                    # For streaming, check status before reading body
+                    if resp.status_code >= 400:
+                        error_body = ""
+                        async for chunk in resp.aiter_bytes():
+                            error_body += chunk.decode("utf-8", errors="replace")
+                            if len(error_body) > 500:
+                                break
+                        logger.error("AI API streaming error %s: %s", resp.status_code, error_body)
+                        raise httpx.HTTPStatusError(
+                            f"AI API error {resp.status_code}: {error_body[:200]}",
+                            request=resp.request,
+                            response=resp,
+                        )
                     async for line in resp.aiter_lines():
                         if not line.startswith("data: "):
                             continue
