@@ -304,12 +304,21 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
 
                         if final_answers:
                             for answer_text in final_answers:
-                                # Prepend prefix based on sender type
-                                if reply_sender_type == "ai":
-                                    tg_reply = f"🤖 AI 回复\n{answer_text}"
+                                # Send badge image + caption
+                                import os
+                                from aiogram.types import FSInputFile
+                                assets_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
+                                badge_file = os.path.join(assets_dir, f"badge_{reply_sender_type}.png")
+
+                                if os.path.exists(badge_file):
+                                    try:
+                                        photo = FSInputFile(badge_file)
+                                        await message.answer_photo(photo=photo, caption=answer_text)
+                                    except Exception:
+                                        logger.warning("Failed to send badge image, falling back to text")
+                                        await message.answer(answer_text)
                                 else:
-                                    tg_reply = f"📖 FAQ 自动回复\n{answer_text}"
-                                await message.answer(tg_reply)
+                                    await message.answer(answer_text)
 
                                 # Store reply in DB
                                 faq_msg = Message(

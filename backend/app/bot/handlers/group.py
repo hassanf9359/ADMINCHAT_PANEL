@@ -342,11 +342,20 @@ async def handle_group_message(
                         if final_answers:
                             for answer in final_answers:
                                 try:
-                                    if reply_sender_type == "ai":
-                                        tg_reply = f"🤖 AI 回复\n{answer}"
+                                    import os
+                                    from aiogram.types import FSInputFile
+                                    assets_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
+                                    badge_file = os.path.join(assets_dir, f"badge_{reply_sender_type}.png")
+
+                                    if os.path.exists(badge_file):
+                                        try:
+                                            photo = FSInputFile(badge_file)
+                                            await message.reply_photo(photo=photo, caption=answer)
+                                        except Exception:
+                                            logger.warning("Failed to send badge image in group")
+                                            await message.reply(answer)
                                     else:
-                                        tg_reply = f"📖 FAQ 自动回复\n{answer}"
-                                    await message.reply(tg_reply)
+                                        await message.reply(answer)
 
                                     faq_msg = Message(
                                         conversation_id=conv.id,
