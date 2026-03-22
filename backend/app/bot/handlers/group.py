@@ -291,18 +291,67 @@ async def handle_group_message(
                                 date=today,
                             ))
 
-                        # Send auto-reply if direct mode
-                        if faq_result.reply_mode == "direct" and faq_result.answers:
-                            for answer in faq_result.answers:
+                        # Process reply based on reply_mode
+                        import sys
+                        final_answers = list(faq_result.answers) if faq_result.answers else []
+                        reply_sender_type = "faq"
+
+                        if faq_result.reply_mode != "direct" and final_answers:
+                            try:
+                                from app.faq.ai_handler import AIHandler, AIConfig as AIRuntimeConfig
+                                from app.models.ai_config import AiConfig
+
+                                ai_cfg_result = await session.execute(
+                                    select(AiConfig).where(AiConfig.is_active.is_(True)).limit(1)
+                                )
+                                ai_cfg = ai_cfg_result.scalar_one_or_none()
+
+                                if ai_cfg:
+                                    handler = AIHandler()
+                                    runtime = AIRuntimeConfig(
+                                        base_url=ai_cfg.base_url,
+                                        api_key=ai_cfg.api_key,
+                                        model=ai_cfg.model or "gpt-5.1-codex",
+                                        max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
+                                        temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
+                                        api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
+                                    )
+
+                                    faq_text_for_ai = mentioned_text or text_content or ""
+                                    if faq_result.reply_mode == "ai_polish":
+                                        ai_resp = await handler.reply_ai_polish(faq_text_for_ai, final_answers[0], runtime)
+                                        if ai_resp.content:
+                                            final_answers = [ai_resp.content]
+                                            reply_sender_type = "ai"
+                                    elif faq_result.reply_mode == "ai_only":
+                                        ai_resp = await handler.reply_ai_only(faq_text_for_ai, runtime)
+                                        if ai_resp.content:
+                                            final_answers = [ai_resp.content]
+                                            reply_sender_type = "ai"
+                                    elif faq_result.reply_mode == "ai_classify_and_answer":
+                                        faq_context = "\n".join(final_answers)
+                                        ai_resp = await handler.reply_ai_classify_and_answer(faq_text_for_ai, faq_context, runtime)
+                                        if ai_resp.content:
+                                            final_answers = [ai_resp.content]
+                                            reply_sender_type = "ai"
+
+                                    await handler.close()
+                            except Exception:
+                                logger.exception("AI processing failed in group handler")
+
+                        if final_answers:
+                            for answer in final_answers:
                                 try:
-                                    tg_reply = f"基于FAQ自动回复\n\n{answer}"
+                                    if reply_sender_type == "ai":
+                                        tg_reply = f"来自AI回复\n\n{answer}"
+                                    else:
+                                        tg_reply = f"基于FAQ自动回复\n\n{answer}"
                                     await message.reply(tg_reply)
 
-                                    # Store in DB for web panel
                                     faq_msg = Message(
                                         conversation_id=conv.id,
                                         direction="outbound",
-                                        sender_type="faq",
+                                        sender_type=reply_sender_type,
                                         via_bot_id=bot_db_id,
                                         content_type="text",
                                         text_content=answer,
@@ -319,7 +368,7 @@ async def handle_group_message(
                                             "id": faq_msg.id,
                                             "conversation_id": conv.id,
                                             "direction": "outbound",
-                                            "sender_type": "faq",
+                                            "sender_type": reply_sender_type,
                                             "content_type": "text",
                                             "text_content": answer,
                                             "faq_matched": True,
