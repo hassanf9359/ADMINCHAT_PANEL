@@ -174,13 +174,26 @@ class BotManager:
         me = await aiogram_bot.get_me()
         username = me.username or f"bot_{me.id}"
 
-        # Create dispatcher with middleware-injected bot_db_id
+        # Create dispatcher with fresh routers for each bot
+        # (aiogram routers can only be attached to one dispatcher)
         dp = Dispatcher()
 
-        # Register routers
-        dp.include_router(commands_router)
-        dp.include_router(private_router)
-        dp.include_router(group_router)
+        from app.bot.handlers.private import router as _private_router_template
+        from app.bot.handlers.group import router as _group_router_template
+        from app.bot.handlers.commands import router as _commands_router_template
+
+        # Create fresh router copies by re-importing the module
+        import importlib
+        import app.bot.handlers.private as _priv_mod
+        import app.bot.handlers.group as _grp_mod
+        import app.bot.handlers.commands as _cmd_mod
+        importlib.reload(_priv_mod)
+        importlib.reload(_grp_mod)
+        importlib.reload(_cmd_mod)
+
+        dp.include_router(_cmd_mod.router)
+        dp.include_router(_priv_mod.router)
+        dp.include_router(_grp_mod.router)
 
         # Middleware to inject bot_db_id and bot_username into handler kwargs
         @dp.message.outer_middleware()
