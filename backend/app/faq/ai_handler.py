@@ -153,11 +153,7 @@ class AIHandler:
                             if len(error_body) > 500:
                                 break
                         logger.error("AI API streaming error %s: %s", resp.status_code, error_body)
-                        raise httpx.HTTPStatusError(
-                            f"AI API error {resp.status_code}: {error_body[:200]}",
-                            request=resp.request,
-                            response=resp,
-                        )
+                        raise Exception(f"AI API error {resp.status_code}: {error_body[:200]}")
                     async for line in resp.aiter_lines():
                         if not line.startswith("data: "):
                             continue
@@ -187,7 +183,7 @@ class AIHandler:
                 content = content.strip()
 
             except httpx.HTTPStatusError as exc:
-                logger.error("AI API HTTP error %s: %s", exc.response.status_code, exc.response.text)
+                logger.error("AI API streaming HTTP error: %s", str(exc))
                 raise
             except Exception:
                 logger.exception("AI API (CRS streaming) call failed")
