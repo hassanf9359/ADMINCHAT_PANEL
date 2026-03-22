@@ -54,6 +54,7 @@ def _config_to_response(config: AiConfig) -> AIConfigResponse:
         base_url=config.base_url,
         api_key_masked=_mask_api_key(config.api_key),
         model=config.model,
+        api_format=getattr(config, "api_format", "openai_chat") or "openai_chat",
         default_params=config.default_params or {},
         is_active=config.is_active,
         created_at=config.created_at,
