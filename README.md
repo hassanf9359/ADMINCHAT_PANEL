@@ -69,6 +69,105 @@ ADMINCHAT Panel 是一个功能完备的 Telegram 客服管理系统。它将 Te
 - **遗漏关键词过滤器** &mdash; 可配置过滤规则（4 种匹配模式），自动跳过 Bot 命令等无效关键词，保持遗漏知识点统计的准确性
 - **遗漏知识点分析** &mdash; 自动统计未匹配问题，每日凌晨 3 点更新排行榜
 
+<details>
+<summary><strong>FAQ 匹配与回复模式详细流程（点击展开）</strong></summary>
+
+#### 整体匹配流程
+
+```mermaid
+flowchart TD
+    A["用户发送消息"] --> B["加载所有 is_active=true 的 FAQ 规则\n按 priority DESC 排序"]
+    B --> C{"遍历每条规则的 questions\n按 match_mode 匹配"}
+    C -->|"命中"| D{"判断 reply_mode"}
+    C -->|"全部未命中"| E["记录到 unmatched_messages"]
+    E --> F["推送到 Web 面板\n等待人工回复"]
+    D --> M1["direct"]
+    D --> M2["ai_only"]
+    D --> M3["ai_polish"]
+    D --> M4["ai_fallback"]
+    D --> M5["ai_classify_and_answer"]
+    D --> M6["rag"]
+    D --> M7["ai_intent"]
+    D --> M8["ai_template"]
+```
+
+#### 5 种匹配模式说明
+
+| 模式 | 关键词示例 | 用户输入 "你好，请问价格多少？" | 适用场景 |
+|------|-----------|-------------------------------|---------|
+| `exact` | `请问价格多少` | 不匹配（必须完全相同） | 精确控制，如特定指令 |
+| `prefix` | `你好` | 匹配（从头开始） | 问候语、固定开头 |
+| `contains` | `价格` | 匹配（包含即可） | 最常用，关键词触发 |
+| `regex` | `价格\|多少钱\|费用` | 匹配（正则匹配） | 多关键词/复杂模式 |
+| `catch_all` | `*`（自动填充） | 匹配（匹配所有消息） | 兜底规则，搭配 RAG/AI |
+
+> **优先级**：`priority` 值越大越先匹配。建议 `catch_all` 设为最低优先级（如 1），确保精确规则优先。
+
+#### 8 种回复模式流程
+
+**1. `direct` — 直接回复**
+```
+用户消息 → FAQ 匹配 → 直接返回预设答案（不调 AI）
+```
+最简单的模式，适合固定回答（如营业时间、联系方式）。
+
+**2. `ai_only` — 纯 AI 回复**
+```
+用户消息 → FAQ 匹配 → 发送用户问题给 AI → AI 生成回答 → 回复用户
+```
+FAQ 规则仅作触发器，回答完全由 AI 生成。适合开放性问题。
+
+**3. `ai_polish` — AI 润色**
+```
+用户消息 → FAQ 匹配 → 取出预设答案 → AI 润色改写 → 回复用户
+```
+预设答案 + AI 改写为更自然的语言。保留核心信息的同时让回复更人性化。
+
+**4. `ai_fallback` — AI 兜底**
+```
+用户消息 → FAQ 匹配 → 有预设答案？
+                        ├── 是 → 直接返回预设答案
+                        └── 否 → AI 生成回答
+```
+优先使用 FAQ 预设答案，没有时才调 AI。节省 AI 调用成本。
+
+**5. `ai_classify_and_answer` — AI 综合回答**
+```
+用户消息 → FAQ 匹配 → 预设答案作为知识上下文 → AI 综合理解后生成回答 → 回复用户
+```
+AI 参考 FAQ 知识库内容，综合理解后生成更完整的回答。
+
+**6. `rag` — RAG 知识库检索**
+```
+用户消息 → FAQ 匹配 → Dify Knowledge API 向量搜索
+          → 返回相关文档片段 → AI 基于检索结果生成回答 → 回复用户
+```
+最强大的模式。从外部知识库检索相关信息，AI 基于检索结果回答。适合大量文档/产品信息场景。
+
+**7. `ai_intent` — AI 意图识别**
+```
+用户消息 → FAQ 匹配 → AI 分析用户意图 → 返回分类结果（JSON）
+```
+AI 将用户问题分类到预定义的类别中，返回 `{"category": "xxx", "confidence": 0.95}` 格式。
+
+**8. `ai_template` — 模板填充**
+```
+用户消息 → FAQ 匹配 → 取出模板（含 {变量} 占位符）→ AI 根据用户问题填充变量 → 回复用户
+```
+预定义回答模板，AI 智能填充变量。适合格式化回答场景。
+
+#### 推荐配置组合
+
+| 场景 | 匹配模式 | 回复模式 | 说明 |
+|------|---------|---------|------|
+| 固定 FAQ | `contains` / `regex` | `direct` | 营业时间、联系方式等 |
+| 产品咨询 | `regex` | `ai_polish` | AI 润色预设答案，更自然 |
+| 知识库问答 | `catch_all` (低优先级) | `rag` | 兜底走知识库检索 |
+| 通用客服 | `catch_all` (最低优先级) | `ai_only` | 所有未匹配消息交给 AI |
+| 混合模式 | 高优先级 `contains` + 低优先级 `catch_all` | `direct` + `rag` | 精确匹配优先，未匹配走 RAG |
+
+</details>
+
 ### AI 与知识库
 - **RAG 知识库检索** &mdash; 模块化 RAG 架构，已对接 Dify Knowledge API（支持 GTE-multilingual + pgvector），模块化 `rag_configs` 配置，可扩展其他 RAG 平台
 - **AI Provider OAuth 多认证** &mdash; 支持 API Key / OpenAI OAuth / Claude OAuth / Claude Session Token / Gemini OAuth 五种认证方式，自动 Token 刷新
@@ -254,7 +353,8 @@ curl http://localhost:8090/embed \
   <img src="docs/designs/1.jpg" width="45%" alt="Login" />
 </p>
 
-## 技术架构
+<details>
+<summary><strong>技术架构（点击展开）</strong></summary>
 
 ```mermaid
 graph TB
@@ -298,7 +398,7 @@ graph TB
     OAuthModule -->|"OAuth 2.0 + PKCE"| OAuthProviders
 ```
 
-## 消息路由流程
+#### 消息路由流程
 
 ```mermaid
 flowchart LR
@@ -311,7 +411,7 @@ flowchart LR
     F & G -->|"reply 用户消息"| A
 ```
 
-## FAQ 匹配与回复流程
+#### FAQ 匹配与回复流程
 
 ```mermaid
 flowchart TB
@@ -332,7 +432,7 @@ flowchart TB
     REPLY --> CLASSIFY["ai_classify_and_answer 综合回答"]
 ```
 
-## AI Provider OAuth 认证流程
+#### AI Provider OAuth 认证流程
 
 ```mermaid
 flowchart TB
@@ -346,7 +446,12 @@ flowchart TB
     R -->|"更新 api_key"| DB
 ```
 
-## 数据库结构
+</details>
+
+<details>
+<summary><strong>数据库结构与功能参考表（点击展开）</strong></summary>
+
+### 数据库结构
 
 | 表名 | 说明 | 核心字段 |
 |------|------|---------|
@@ -422,6 +527,8 @@ flowchart TB
 
 > Token 自动刷新：后台每 5 分钟检查即将过期的 OAuth token 并自动续期，服务启动时也会补偿刷新。
 
+</details>
+
 ## 快速开始
 
 ```bash
@@ -452,7 +559,8 @@ docker compose -f docker-compose.full.yml up -d
 
 每种方式都支持 **Named Volume**（Docker 管理）和 **Bind Mount**（映射宿主机目录），在 yml 文件注释中切换。
 
-## 项目结构
+<details>
+<summary><strong>项目结构（点击展开）</strong></summary>
 
 ```
 ADMINCHAT_PANEL/
@@ -505,7 +613,10 @@ ADMINCHAT_PANEL/
 └── LICENSE                     # GPL-3.0
 ```
 
-## 开发指南
+</details>
+
+<details>
+<summary><strong>开发指南（点击展开）</strong></summary>
 
 ### 后端开发
 
@@ -540,6 +651,8 @@ npm run dev
 - 前端使用函数式组件 + Hooks，Zustand 管理全局状态，TanStack Query 管理服务端状态
 - 数据库查询注意使用 `joinedload` / `selectinload` 避免 N+1 问题
 - Pydantic Schema 使用 `default_factory` 处理可变默认值（如 `list`、`dict`）
+
+</details>
 
 ## 版本说明
 

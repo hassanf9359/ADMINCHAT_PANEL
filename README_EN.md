@@ -51,6 +51,104 @@ ADMINCHAT Panel is a production-ready Telegram customer service management syste
 - **RAG Knowledge Base** &mdash; Modular RAG architecture with Dify Knowledge API integration (GTE-multilingual + pgvector), extensible to other providers
 - **AI Provider OAuth Multi-Auth** &mdash; 5 authentication methods: API Key / OpenAI OAuth / Claude OAuth / Claude Session Token / Gemini OAuth, with automatic token refresh
 - **Missed Keyword Filters** &mdash; Configurable filter rules with 4 match modes (exact, prefix, contains, regex) to auto-bypass irrelevant keywords such as bot commands (`/start`, `/about`)
+
+<details>
+<summary><strong>FAQ Matching & Reply Modes Explained (click to expand)</strong></summary>
+
+#### Overall Matching Flow
+
+```mermaid
+flowchart TD
+    A["User sends message"] --> B["Load all active FAQ rules\nsorted by priority DESC"]
+    B --> C{"Iterate each rule's questions\nmatch by match_mode"}
+    C -->|"Hit"| D{"Check reply_mode"}
+    C -->|"No match"| E["Record to unmatched_messages"]
+    E --> F["Push to Web Panel\nfor manual reply"]
+    D --> M1["direct"]
+    D --> M2["ai_only"]
+    D --> M3["ai_polish"]
+    D --> M4["ai_fallback"]
+    D --> M5["ai_classify_and_answer"]
+    D --> M6["rag"]
+    D --> M7["ai_intent"]
+    D --> M8["ai_template"]
+```
+
+#### 5 Match Modes
+
+| Mode | Keyword Example | Input: "Hello, how much does it cost?" | Use Case |
+|------|----------------|---------------------------------------|----------|
+| `exact` | `how much does it cost` | No match (must be identical) | Precise commands |
+| `prefix` | `Hello` | Match (starts with) | Greetings, fixed prefixes |
+| `contains` | `cost` | Match (contains substring) | Most common, keyword trigger |
+| `regex` | `cost\|price\|fee` | Match (regex pattern) | Multi-keyword / complex patterns |
+| `catch_all` | `*` (auto-filled) | Match (matches everything) | Fallback rules with RAG/AI |
+
+> **Priority**: Higher `priority` value matches first. Set `catch_all` to lowest priority (e.g. 1).
+
+#### 8 Reply Modes
+
+**1. `direct` — Direct Reply**
+```
+User message → FAQ match → Return preset answer (no AI call)
+```
+Simplest mode. For fixed answers (business hours, contact info).
+
+**2. `ai_only` — Pure AI Reply**
+```
+User message → FAQ match → Send question to AI → AI generates answer → Reply
+```
+FAQ rule is just a trigger; answer is fully AI-generated.
+
+**3. `ai_polish` — AI Polish**
+```
+User message → FAQ match → Get preset answer → AI rewrites naturally → Reply
+```
+Preset answer + AI rewrite for more natural language. Preserves core info.
+
+**4. `ai_fallback` — AI Fallback**
+```
+User message → FAQ match → Has preset answer?
+                            ├── Yes → Return preset answer
+                            └── No → AI generates answer
+```
+Prefers FAQ answer; only calls AI when none exists. Saves AI costs.
+
+**5. `ai_classify_and_answer` — AI Comprehensive Answer**
+```
+User message → FAQ match → Preset answers as knowledge context → AI generates comprehensive answer → Reply
+```
+AI references FAQ content and generates a more complete answer.
+
+**6. `rag` — RAG Knowledge Base Retrieval**
+```
+User message → FAQ match → Dify Knowledge API vector search
+             → Returns relevant document chunks → AI generates answer from context → Reply
+```
+Most powerful mode. Retrieves from external knowledge base for AI to answer.
+
+**7. `ai_intent` — AI Intent Classification**
+```
+User message → FAQ match → AI classifies intent → Returns JSON {"category": "xxx", "confidence": 0.95}
+```
+
+**8. `ai_template` — Template Filling**
+```
+User message → FAQ match → Get template with {variable} placeholders → AI fills variables → Reply
+```
+
+#### Recommended Configurations
+
+| Scenario | Match Mode | Reply Mode | Notes |
+|----------|-----------|------------|-------|
+| Fixed FAQ | `contains` / `regex` | `direct` | Business hours, contact info |
+| Product inquiries | `regex` | `ai_polish` | AI polishes preset answers |
+| Knowledge base Q&A | `catch_all` (low priority) | `rag` | Fallback to knowledge base |
+| General support | `catch_all` (lowest priority) | `ai_only` | All unmatched → AI |
+| Hybrid | High priority `contains` + low `catch_all` | `direct` + `rag` | Exact match first, then RAG |
+
+</details>
+
 - **User Management** &mdash; Tags, groups, blocking, search, and full Telegram user profile display
 - **AI Integration** &mdash; OpenAI-compatible API format with multi-provider configuration
 - **Cloudflare Turnstile** &mdash; Human verification for private chat users to prevent abuse
@@ -231,7 +329,8 @@ curl http://localhost:8090/embed \
   <img src="docs/designs/1.jpg" width="45%" alt="Login" />
 </p>
 
-## Architecture
+<details>
+<summary><strong>Architecture & Flow Diagrams (click to expand)</strong></summary>
 
 ```mermaid
 graph TB
@@ -302,7 +401,12 @@ flowchart TB
     R -->|"Update api_key"| DB
 ```
 
-## Database Schema
+</details>
+
+<details>
+<summary><strong>Database Schema & Feature Reference (click to expand)</strong></summary>
+
+### Database Schema
 
 | Table | Description | Key Fields |
 |-------|-------------|------------|
@@ -381,6 +485,8 @@ Each filter supports 4 match modes:
 
 > **Automatic token refresh:** A background job checks every 5 minutes for tokens approaching expiry and renews them automatically. The refresh also runs at server startup to compensate for any downtime.
 
+</details>
+
 ## Quick Start
 
 ```bash
@@ -411,7 +517,8 @@ For detailed deployment instructions, see [`deploy/README.md`](deploy/README.md)
 
 Each method supports both **Named Volumes** (Docker-managed) and **Bind Mounts** (host directory mapping). Switch between them by toggling the comments in the respective yml file.
 
-## Project Structure
+<details>
+<summary><strong>Project Structure (click to expand)</strong></summary>
 
 ```
 ADMINCHAT_PANEL/
@@ -464,7 +571,10 @@ ADMINCHAT_PANEL/
 └── LICENSE                     # GPL-3.0
 ```
 
-## Development
+</details>
+
+<details>
+<summary><strong>Development Guide (click to expand)</strong></summary>
 
 ### Backend
 
@@ -491,6 +601,8 @@ npm install
 npm run dev
 # Visit http://localhost:5173
 ```
+
+</details>
 
 ## What's New in v0.8.1
 
