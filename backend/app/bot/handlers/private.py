@@ -249,7 +249,7 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                             # RAG mode: search knowledge base, then AI synthesize
                             try:
                                 from app.faq.rag import get_rag_provider
-                                rag_provider = await get_rag_provider()
+                                rag_provider = await get_rag_provider(config_id=faq_result.rag_config_id)
                                 if rag_provider:
                                     rag_results = await rag_provider.search(text_content, top_k=settings.RAG_TOP_K)
                                     if rag_results:

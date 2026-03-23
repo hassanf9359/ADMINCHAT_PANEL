@@ -15,6 +15,7 @@ from app.models.faq import (
 )
 from app.models.stats import FaqHitStat, MissedKeyword, UnmatchedMessage
 from app.models.ai_config import AiConfig, AiUsageLog
+from app.models.rag_config import RagConfig
 from app.models.settings import SystemSetting
 from app.models.audit import AuditLog
 
@@ -45,6 +46,7 @@ __all__ = [
     "UnmatchedMessage",
     "AiConfig",
     "AiUsageLog",
+    "RagConfig",
     "SystemSetting",
     "AuditLog",
 ]

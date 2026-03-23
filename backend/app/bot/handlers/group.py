@@ -302,7 +302,7 @@ async def handle_group_message(
                             try:
                                 from app.faq.rag import get_rag_provider
                                 from app.config import settings as app_settings
-                                rag_provider = await get_rag_provider()
+                                rag_provider = await get_rag_provider(config_id=faq_result.rag_config_id)
                                 faq_text_for_rag = mentioned_text or text_content or ""
                                 if rag_provider and faq_text_for_rag:
                                     rag_results = await rag_provider.search(faq_text_for_rag, top_k=app_settings.RAG_TOP_K)

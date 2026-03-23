@@ -7,10 +7,6 @@ PATCH  /ai/configs/:id    - update config
 DELETE /ai/configs/:id    - delete config
 POST   /ai/configs/:id/test - test connection
 GET    /ai/usage          - usage statistics
-GET    /ai/rag-config     - get RAG configuration
-PUT    /ai/rag-config     - save RAG configuration
-DELETE /ai/rag-config     - delete RAG configuration (fallback to .env)
-POST   /ai/rag-config/test - test RAG connectivity
 """
 from __future__ import annotations
 
@@ -27,7 +23,6 @@ from app.faq.ai_handler import AIConfig as AIRuntimeConfig
 from app.faq.ai_handler import ai_handler
 from app.models.admin import Admin
 from app.models.ai_config import AiConfig, AiUsageLog
-from app.models.settings import SystemSetting
 from app.schemas.ai_config import (
     AIConfigCreate,
     AIConfigListResponse,
@@ -36,9 +31,6 @@ from app.schemas.ai_config import (
     AIConfigTestResponse,
     AIConfigUpdate,
     AIUsageStatsResponse,
-    RAGConfigResponse,
-    RAGConfigSave,
-    RAGTestResponse,
 )
 from app.schemas.common import APIResponse
 
@@ -318,167 +310,3 @@ async def get_ai_usage(
     )
 
     return APIResponse(data=usage.model_dump())
-
-
-# ==================== RAG Config ====================
-
-RAG_SETTINGS_KEY = "rag_config"
-
-
-def _build_rag_response_from_db(row_value: dict) -> RAGConfigResponse:
-    """Build RAGConfigResponse from a DB JSON value."""
-    return RAGConfigResponse(
-        provider=row_value.get("provider"),
-        dify_base_url=row_value.get("dify_base_url"),
-        dify_api_key_masked=_mask_api_key(row_value["dify_api_key"]) if row_value.get("dify_api_key") else None,
-        dify_dataset_id=row_value.get("dify_dataset_id"),
-        top_k=row_value.get("top_k", 3),
-        source="database",
-    )
-
-
-def _build_rag_response_from_env() -> RAGConfigResponse | None:
-    """Build RAGConfigResponse from .env settings, or None if not configured."""
-    from app.config import settings
-
-    provider = (settings.RAG_PROVIDER or "").strip().lower()
-    if not provider:
-        return None
-    return RAGConfigResponse(
-        provider=provider,
-        dify_base_url=settings.DIFY_BASE_URL or None,
-        dify_api_key_masked=_mask_api_key(settings.DIFY_API_KEY) if settings.DIFY_API_KEY else None,
-        dify_dataset_id=settings.DIFY_DATASET_ID or None,
-        top_k=3,
-        source="env",
-    )
-
-
-@router.get("/rag-config", response_model=APIResponse)
-async def get_rag_config(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    _current_user: Annotated[Admin, Depends(require_super_admin)],
-) -> APIResponse:
-    """Get current RAG configuration. DB config takes priority over .env."""
-    result = await db.execute(
-        select(SystemSetting).where(SystemSetting.key == RAG_SETTINGS_KEY)
-    )
-    row = result.scalar_one_or_none()
-
-    if row is not None:
-        return APIResponse(data=_build_rag_response_from_db(row.value).model_dump())
-
-    env_resp = _build_rag_response_from_env()
-    if env_resp:
-        return APIResponse(data=env_resp.model_dump())
-
-    return APIResponse(data=RAGConfigResponse(source="none").model_dump())
-
-
-@router.put("/rag-config", response_model=APIResponse)
-async def save_rag_config(
-    body: RAGConfigSave,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    _current_user: Annotated[Admin, Depends(require_super_admin)],
-) -> APIResponse:
-    """Save RAG configuration to system_settings (overrides .env)."""
-    config_value = body.model_dump()
-
-    result = await db.execute(
-        select(SystemSetting).where(SystemSetting.key == RAG_SETTINGS_KEY)
-    )
-    row = result.scalar_one_or_none()
-
-    # If API key is None/empty, preserve existing key from DB
-    if not config_value.get("dify_api_key") and row is not None:
-        config_value["dify_api_key"] = row.value.get("dify_api_key", "")
-
-    # For new configs, API key is required
-    if not config_value.get("dify_api_key") and row is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="dify_api_key is required for new RAG configuration",
-        )
-
-    if row is not None:
-        row.value = config_value
-    else:
-        db.add(SystemSetting(
-            key=RAG_SETTINGS_KEY,
-            value=config_value,
-            description="RAG provider configuration (managed via Web UI)",
-        ))
-
-    await db.flush()
-
-    # Reset cached RAG provider so next call picks up new config
-    from app.faq.rag import reset_rag_provider
-    await reset_rag_provider()
-
-    return APIResponse(
-        message="RAG configuration saved",
-        data=_build_rag_response_from_db(config_value).model_dump(),
-    )
-
-
-@router.delete("/rag-config", response_model=APIResponse)
-async def delete_rag_config(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    _current_user: Annotated[Admin, Depends(require_super_admin)],
-) -> APIResponse:
-    """Delete DB RAG configuration, falling back to .env if available."""
-    await db.execute(
-        delete(SystemSetting).where(SystemSetting.key == RAG_SETTINGS_KEY)
-    )
-    await db.flush()
-
-    # Reset cached RAG provider
-    from app.faq.rag import reset_rag_provider
-    await reset_rag_provider()
-
-    env_resp = _build_rag_response_from_env()
-    if env_resp:
-        return APIResponse(
-            message="Database config deleted. Falling back to .env configuration.",
-            data=env_resp.model_dump(),
-        )
-
-    return APIResponse(
-        message="RAG configuration deleted",
-        data=RAGConfigResponse(source="none").model_dump(),
-    )
-
-
-@router.post("/rag-config/test", response_model=APIResponse)
-async def test_rag_config(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    _current_user: Annotated[Admin, Depends(require_super_admin)],
-) -> APIResponse:
-    """Test RAG connectivity by performing a test search."""
-    from app.faq.rag import get_rag_provider
-
-    provider = await get_rag_provider()
-    if provider is None:
-        return APIResponse(
-            data=RAGTestResponse(
-                success=False,
-                error="RAG provider not configured or initialization failed",
-            ).model_dump()
-        )
-
-    try:
-        results = await provider.search("test", top_k=3)
-        return APIResponse(
-            data=RAGTestResponse(
-                success=True,
-                result_count=len(results),
-            ).model_dump()
-        )
-    except Exception as exc:
-        logger.exception("RAG config test failed")
-        return APIResponse(
-            data=RAGTestResponse(
-                success=False,
-                error=str(exc)[:500],
-            ).model_dump()
-        )

@@ -3,156 +3,166 @@ RAG module - modular Retrieval-Augmented Generation provider system.
 
 Usage:
     from app.faq.rag import get_rag_provider
-    provider = get_rag_provider()
-    if provider:
-        results = await provider.search("user question")
+    provider = await get_rag_provider()           # first active config
+    provider = await get_rag_provider(config_id=3) # specific config
 """
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import logging
-from typing import Optional
+from typing import Dict, Optional
 
 from .base import RAGProvider, RAGResult
 
 logger = logging.getLogger(__name__)
 
-# Module-level cached instance + lock for thread-safe init
-_provider_instance: Optional[RAGProvider] = None
-_config_hash: Optional[str] = None
+# Cache: config_id -> provider instance
+_provider_cache: Dict[int, RAGProvider] = {}
 _init_lock = asyncio.Lock()
 
 
-def _hash_config(cfg: dict) -> str:
-    """Produce a stable hash for a config dict to detect changes."""
-    return hashlib.md5(json.dumps(cfg, sort_keys=True).encode()).hexdigest()
-
-
-async def _load_db_config() -> Optional[dict]:
-    """Load RAG config from system_settings table. Returns None if not found."""
+async def _load_config_by_id(config_id: int) -> Optional[dict]:
+    """Load a specific RAG config from the rag_configs table."""
     try:
         from app.database import async_session_factory
-        from app.models.settings import SystemSetting
+        from app.models.rag_config import RagConfig
         from sqlalchemy import select
 
         async with async_session_factory() as session:
             result = await session.execute(
-                select(SystemSetting.value).where(SystemSetting.key == "rag_config")
+                select(RagConfig).where(RagConfig.id == config_id, RagConfig.is_active.is_(True))
             )
             row = result.scalar_one_or_none()
-            return row if isinstance(row, dict) else None
+            if row is None:
+                return None
+            return {
+                "id": row.id,
+                "provider": row.provider,
+                "base_url": row.base_url,
+                "api_key": row.api_key,
+                "dataset_id": row.dataset_id,
+                "top_k": row.top_k,
+            }
     except Exception:
-        logger.debug("Could not load RAG config from DB (DB may not be ready)")
+        logger.debug("Could not load RAG config id=%s from DB", config_id)
         return None
 
 
-async def get_rag_provider() -> Optional[RAGProvider]:
-    """
-    Factory function: return a RAG provider based on configuration.
+async def _load_first_active_config() -> Optional[dict]:
+    """Load the first active RAG config from the rag_configs table."""
+    try:
+        from app.database import async_session_factory
+        from app.models.rag_config import RagConfig
+        from sqlalchemy import select
 
-    Priority: DB system_settings → .env settings.
-    Returns None if RAG is not configured. Thread-safe singleton.
-
-    After reset_rag_provider(), the next call rebuilds from config.
-    Between resets, the cached instance is returned without DB queries.
-    """
-    global _provider_instance, _config_hash
-
-    # Fast path: if already initialized, return cached instance
-    if _provider_instance is not None:
-        return _provider_instance
-    # If we've already checked and found no config, don't re-query every call.
-    # _config_hash == "__none__" means "checked, nothing configured".
-    if _config_hash == "__none__":
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(RagConfig)
+                .where(RagConfig.is_active.is_(True))
+                .order_by(RagConfig.id.asc())
+                .limit(1)
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return None
+            return {
+                "id": row.id,
+                "provider": row.provider,
+                "base_url": row.base_url,
+                "api_key": row.api_key,
+                "dataset_id": row.dataset_id,
+                "top_k": row.top_k,
+            }
+    except Exception:
+        logger.debug("Could not load any active RAG config from DB")
         return None
+
+
+def _build_provider(cfg: dict) -> Optional[RAGProvider]:
+    """Instantiate a RAGProvider from a config dict."""
+    provider_name = (cfg.get("provider") or "").strip().lower()
+    if provider_name == "dify":
+        base_url = cfg.get("base_url", "")
+        api_key = cfg.get("api_key", "")
+        dataset_id = cfg.get("dataset_id", "")
+        if not all([base_url, api_key, dataset_id]):
+            logger.error("RAG config id=%s incomplete: missing base_url/api_key/dataset_id", cfg.get("id"))
+            return None
+        if not base_url.startswith(("http://", "https://")):
+            logger.error("RAG config id=%s: base_url must start with http:// or https://", cfg.get("id"))
+            return None
+
+        from .dify_provider import DifyRAGProvider
+        return DifyRAGProvider(
+            base_url=base_url,
+            api_key=api_key,
+            dataset_id=dataset_id,
+        )
+
+    logger.warning("Unknown RAG provider: %s (config id=%s)", provider_name, cfg.get("id"))
+    return None
+
+
+async def get_rag_provider(config_id: Optional[int] = None) -> Optional[RAGProvider]:
+    """
+    Factory function: return a RAG provider.
+
+    - config_id given → load that specific config from rag_configs table
+    - config_id None  → load first active config (backward compatible)
+
+    Returns None if not configured. Caches provider instances per config_id.
+    """
+    global _provider_cache
 
     async with _init_lock:
-        # Double-check after lock
-        if _provider_instance is not None:
-            return _provider_instance
-        if _config_hash == "__none__":
-            return None
+        if config_id is not None:
+            # Check cache
+            if config_id in _provider_cache:
+                return _provider_cache[config_id]
 
-        # Try DB config first
-        db_config = await _load_db_config()
-
-        if db_config:
-            provider_name = (db_config.get("provider") or "").strip().lower()
-            if provider_name == "dify":
-                base_url = db_config.get("dify_base_url", "")
-                api_key = db_config.get("dify_api_key", "")
-                dataset_id = db_config.get("dify_dataset_id", "")
-                if not all([base_url, api_key, dataset_id]):
-                    logger.error("DB RAG config incomplete: missing dify_base_url/dify_api_key/dify_dataset_id")
-                    _config_hash = "__none__"
-                    return None
-                if not base_url.startswith(("http://", "https://")):
-                    logger.error("dify_base_url must start with http:// or https://")
-                    _config_hash = "__none__"
-                    return None
-
-                from .dify_provider import DifyRAGProvider
-                _provider_instance = DifyRAGProvider(
-                    base_url=base_url,
-                    api_key=api_key,
-                    dataset_id=dataset_id,
-                )
-                _config_hash = _hash_config(db_config)
-                logger.info("RAG provider initialized from DB config: dify")
-                return _provider_instance
-
-            logger.warning("Unknown RAG provider in DB config: %s", provider_name)
-            _config_hash = "__none__"
-            return None
-
-        # Fallback to .env
-        from app.config import settings
-
-        provider_name = (settings.RAG_PROVIDER or "").strip().lower()
-        if not provider_name:
-            _config_hash = "__none__"
-            return None
-
-        if provider_name == "dify":
-            if not all([settings.DIFY_BASE_URL, settings.DIFY_API_KEY, settings.DIFY_DATASET_ID]):
-                logger.error("RAG_PROVIDER=dify but DIFY_BASE_URL/DIFY_API_KEY/DIFY_DATASET_ID not all set")
-                _config_hash = "__none__"
-                return None
-            if not settings.DIFY_BASE_URL.startswith(("http://", "https://")):
-                logger.error("DIFY_BASE_URL must start with http:// or https://")
-                _config_hash = "__none__"
+            cfg = await _load_config_by_id(config_id)
+            if cfg is None:
+                logger.warning("RAG config id=%s not found or inactive", config_id)
                 return None
 
-            from .dify_provider import DifyRAGProvider
-            _provider_instance = DifyRAGProvider(
-                base_url=settings.DIFY_BASE_URL,
-                api_key=settings.DIFY_API_KEY,
-                dataset_id=settings.DIFY_DATASET_ID,
-            )
-            _config_hash = "env"
-            logger.info("RAG provider initialized from .env: dify")
-            return _provider_instance
+            provider = _build_provider(cfg)
+            if provider:
+                _provider_cache[config_id] = provider
+                logger.info("RAG provider initialized from config id=%s: %s", config_id, cfg.get("provider"))
+            return provider
+        else:
+            # Fallback: first active config
+            # Check if any cached provider exists (return first one)
+            if _provider_cache:
+                return next(iter(_provider_cache.values()))
 
-        logger.warning("Unknown RAG_PROVIDER: %s", provider_name)
-        _config_hash = "__none__"
-        return None
+            cfg = await _load_first_active_config()
+            if cfg is None:
+                return None
+
+            cid = cfg["id"]
+            if cid in _provider_cache:
+                return _provider_cache[cid]
+
+            provider = _build_provider(cfg)
+            if provider:
+                _provider_cache[cid] = provider
+                logger.info("RAG provider initialized from first active config id=%s: %s", cid, cfg.get("provider"))
+            return provider
 
 
 async def reset_rag_provider() -> None:
-    """Reset the cached provider so next get_rag_provider() rebuilds it."""
-    global _provider_instance, _config_hash
+    """Reset the cached providers so next get_rag_provider() rebuilds them."""
+    global _provider_cache
     async with _init_lock:
-        if _provider_instance is not None:
-            await _provider_instance.close()
-        _provider_instance = None
-        _config_hash = None
+        for provider in _provider_cache.values():
+            await provider.close()
+        _provider_cache.clear()
         logger.info("RAG provider cache reset")
 
 
 async def shutdown_rag_provider() -> None:
-    """Shut down and release the RAG provider. Call from FastAPI shutdown event."""
+    """Shut down and release all RAG providers. Call from FastAPI shutdown event."""
     await reset_rag_provider()
 
 

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Zap, X, CheckCircle, XCircle, Loader2, BarChart3, Activity, Database } from 'lucide-react';
 import Header from '../components/layout/Header';
-import { getAIConfigs, createAIConfig, updateAIConfig, deleteAIConfig, testAIConfig, getAIUsage, getRAGConfig, saveRAGConfig, deleteRAGConfig, testRAGConfig } from '../services/aiConfigApi';
-import type { AIConfig, AIConfigCreate, AIConfigUpdate, AITestResult, AIUsageStats, RAGTestResult, AuthMethod } from '../types';
+import { getAIConfigs, createAIConfig, updateAIConfig, deleteAIConfig, testAIConfig, getAIUsage } from '../services/aiConfigApi';
+import { getRagConfigs, createRagConfig, updateRagConfig, deleteRagConfig, testRagConfig } from '../services/ragConfigApi';
+import type { AIConfig, AIConfigCreate, AIConfigUpdate, AITestResult, AIUsageStats, RagConfig, RAGTestResult, AuthMethod } from '../types';
 import AuthMethodSelector from '../components/ai/AuthMethodSelector';
 import OAuthFlowModal from '../components/ai/OAuthFlowModal';
 
@@ -59,16 +60,16 @@ export default function AISettings() {
   const [addStep, setAddStep] = useState<'select_method' | 'form' | 'oauth'>('select_method');
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>('api_key');
 
-  // RAG state
-  const [ragProvider, setRagProvider] = useState<string>('disabled');
-  const [ragBaseUrl, setRagBaseUrl] = useState('');
-  const [ragApiKey, setRagApiKey] = useState('');
-  const [ragDatasetId, setRagDatasetId] = useState('');
-  const [ragTopK, setRagTopK] = useState(3);
-  const [ragTestResult, setRagTestResult] = useState<RAGTestResult | null>(null);
-  const [ragSaving, setRagSaving] = useState(false);
-  const [ragTesting, setRagTesting] = useState(false);
-  const [ragDeleteConfirm, setRagDeleteConfirm] = useState(false);
+  // RAG state (multi-config)
+  const [showRagForm, setShowRagForm] = useState(false);
+  const [editingRagConfig, setEditingRagConfig] = useState<RagConfig | null>(null);
+  const [ragDeleteConfirm, setRagDeleteConfirm] = useState<number | null>(null);
+  const [ragTestResults, setRagTestResults] = useState<Record<number, RAGTestResult | 'loading'>>({});
+  const [ragFormName, setRagFormName] = useState('');
+  const [ragFormBaseUrl, setRagFormBaseUrl] = useState('');
+  const [ragFormApiKey, setRagFormApiKey] = useState('');
+  const [ragFormDatasetId, setRagFormDatasetId] = useState('');
+  const [ragFormTopK, setRagFormTopK] = useState(3);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -91,27 +92,13 @@ export default function AISettings() {
     enabled: activeTab === 'usage',
   });
 
-  const { data: ragData, isLoading: ragLoading } = useQuery({
-    queryKey: ['rag-config'],
-    queryFn: getRAGConfig,
+  const { data: ragConfigsData, isLoading: ragLoading } = useQuery({
+    queryKey: ['rag-configs'],
+    queryFn: getRagConfigs,
     enabled: activeTab === 'rag',
   });
 
-  // Sync RAG form when data loads
-  useEffect(() => {
-    if (ragData) {
-      if (ragData.source !== 'none' && ragData.provider) {
-        setRagProvider(ragData.provider);
-        setRagBaseUrl(ragData.dify_base_url || '');
-        setRagDatasetId(ragData.dify_dataset_id || '');
-        setRagTopK(ragData.top_k || 3);
-      } else {
-        setRagProvider('disabled');
-      }
-      setRagApiKey('');
-      setRagTestResult(null);
-    }
-  }, [ragData]);
+  const ragConfigs = ragConfigsData?.items || [];
 
   const createMutation = useMutation({
     mutationFn: (body: AIConfigCreate) => createAIConfig(body),
@@ -139,8 +126,92 @@ export default function AISettings() {
     },
   });
 
+  const ragCreateMutation = useMutation({
+    mutationFn: (body: { name: string; provider: string; base_url: string; api_key: string; dataset_id: string; top_k: number }) => createRagConfig(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rag-configs'] });
+      setShowRagForm(false);
+      resetRagForm();
+    },
+  });
+
+  const ragUpdateMutation = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: Record<string, unknown> }) => updateRagConfig(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rag-configs'] });
+      setShowRagForm(false);
+      setEditingRagConfig(null);
+      resetRagForm();
+    },
+  });
+
+  const ragDeleteMutation = useMutation({
+    mutationFn: (id: number) => deleteRagConfig(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rag-configs'] });
+      setRagDeleteConfirm(null);
+    },
+  });
+
   const configs = configsData?.items || [];
   const usage = usageData as AIUsageStats | undefined;
+
+  const resetRagForm = () => {
+    setRagFormName('');
+    setRagFormBaseUrl('');
+    setRagFormApiKey('');
+    setRagFormDatasetId('');
+    setRagFormTopK(3);
+  };
+
+  const startRagEdit = (config: RagConfig) => {
+    setEditingRagConfig(config);
+    setRagFormName(config.name);
+    setRagFormBaseUrl(config.base_url);
+    setRagFormApiKey('');
+    setRagFormDatasetId(config.dataset_id);
+    setRagFormTopK(config.top_k);
+    setShowRagForm(true);
+  };
+
+  const handleRagSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingRagConfig) {
+      ragUpdateMutation.mutate({
+        id: editingRagConfig.id,
+        body: {
+          name: ragFormName.trim(),
+          provider: 'dify',
+          base_url: ragFormBaseUrl.trim(),
+          ...(ragFormApiKey ? { api_key: ragFormApiKey } : {}),
+          dataset_id: ragFormDatasetId.trim(),
+          top_k: ragFormTopK,
+        },
+      });
+    } else {
+      ragCreateMutation.mutate({
+        name: ragFormName.trim(),
+        provider: 'dify',
+        base_url: ragFormBaseUrl.trim(),
+        api_key: ragFormApiKey,
+        dataset_id: ragFormDatasetId.trim(),
+        top_k: ragFormTopK,
+      });
+    }
+  };
+
+  const handleRagTest = async (configId: number) => {
+    setRagTestResults((prev) => ({ ...prev, [configId]: 'loading' }));
+    try {
+      const result = await testRagConfig(configId);
+      setRagTestResults((prev) => ({ ...prev, [configId]: result }));
+    } catch {
+      setRagTestResults((prev) => ({
+        ...prev,
+        [configId]: { success: false, result_count: 0, error: 'Network error' },
+      }));
+    }
+  };
 
   const resetForm = () => {
     setFormName('');
@@ -471,224 +542,239 @@ export default function AISettings() {
         {/* ======== RAG TAB ======== */}
         {activeTab === 'rag' && (
           <>
+            <div className="flex items-center justify-between mb-8">
+              <p className="text-[#8a8a8a] text-sm">
+                RAG Knowledge Base configurations &middot; {ragConfigs.length} config{ragConfigs.length !== 1 ? 's' : ''}
+              </p>
+              <button
+                onClick={() => { resetRagForm(); setEditingRagConfig(null); setShowRagForm(true); }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4" /> Add RAG Config
+              </button>
+            </div>
+
             {ragLoading ? (
               <div className="flex justify-center py-20">
                 <Loader2 className="w-6 h-6 text-[#6a6a6a] animate-spin" />
               </div>
+            ) : ragConfigs.length === 0 ? (
+              <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-12 text-center">
+                <Database className="w-8 h-8 text-[#6a6a6a] mx-auto mb-3" />
+                <p className="text-sm text-[#6a6a6a]">No RAG configurations. Add one to enable knowledge base features.</p>
+              </div>
             ) : (
-              <div className="max-w-2xl">
-                {/* Source badge */}
-                <div className="flex items-center gap-3 mb-6">
-                  <p className="text-[#8a8a8a] text-sm">RAG Knowledge Base configuration</p>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase ${
-                    ragData?.source === 'database'
-                      ? 'text-[#059669] bg-[#059669]/10'
-                      : ragData?.source === 'env'
-                        ? 'text-[#FF8800] bg-[#FF8800]/10'
-                        : 'text-[#6a6a6a] bg-[#141414]'
-                  }`}>
-                    {ragData?.source === 'database' ? 'Database' : ragData?.source === 'env' ? 'Environment' : 'Not configured'}
-                  </span>
-                </div>
-
-                <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-6">
-                  {/* Provider select */}
-                  <div className="mb-5">
-                    <label className="block text-xs text-[#8a8a8a] mb-2">Provider</label>
-                    <select
-                      value={ragProvider}
-                      onChange={(e) => { setRagProvider(e.target.value); setRagTestResult(null); }}
-                      className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] focus:outline-none focus:border-[#00D9FF] transition-colors"
-                    >
-                      <option value="disabled">Disabled</option>
-                      <option value="dify">Dify</option>
-                    </select>
-                  </div>
-
-                  {/* Dify config fields */}
-                  {ragProvider === 'dify' && (
-                    <div className="flex flex-col gap-4">
-                      <div>
-                        <label className="block text-xs text-[#8a8a8a] mb-2">Base URL *</label>
-                        <input
-                          type="url"
-                          value={ragBaseUrl}
-                          onChange={(e) => setRagBaseUrl(e.target.value)}
-                          placeholder="http://your-dify-host/v1"
-                          className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-[#8a8a8a] mb-2">
-                          API Key {ragData?.source === 'database' ? '(leave blank to keep current)' : '*'}
-                        </label>
-                        <input
-                          type="password"
-                          value={ragApiKey}
-                          onChange={(e) => setRagApiKey(e.target.value)}
-                          placeholder={ragData?.dify_api_key_masked || 'dataset-...'}
-                          className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-[#8a8a8a] mb-2">Dataset ID *</label>
-                        <input
-                          type="text"
-                          value={ragDatasetId}
-                          onChange={(e) => setRagDatasetId(e.target.value)}
-                          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                          className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-[#8a8a8a] mb-2">
-                          Top K: <span className="text-[#00D9FF] font-mono">{ragTopK}</span>
-                        </label>
-                        <input
-                          type="range"
-                          min={1}
-                          max={20}
-                          step={1}
-                          value={ragTopK}
-                          onChange={(e) => setRagTopK(Number(e.target.value))}
-                          className="w-full accent-accent"
-                        />
-                        <div className="flex justify-between text-[10px] text-[#6a6a6a] mt-0.5">
-                          <span>1 (precise)</span>
-                          <span>20 (broad)</span>
+              <div className="grid gap-4">
+                {ragConfigs.map((config) => {
+                  const testResult = ragTestResults[config.id];
+                  return (
+                    <div key={config.id} className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-6">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-sm font-semibold text-[#FFFFFF]">{config.name}</h3>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase text-[#059669] bg-[#059669]/10">
+                              {config.provider}
+                            </span>
+                            {!config.is_active && (
+                              <span className="text-xs text-[#6a6a6a] bg-[#141414] px-2 py-0.5 rounded">Disabled</span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-x-8 gap-y-1.5 text-xs">
+                            <div>
+                              <span className="text-[#6a6a6a]">Base URL:</span>{' '}
+                              <span className="text-[#8a8a8a] font-mono">{config.base_url}</span>
+                            </div>
+                            <div>
+                              <span className="text-[#6a6a6a]">Dataset ID:</span>{' '}
+                              <span className="text-[#8a8a8a] font-mono">{config.dataset_id}</span>
+                            </div>
+                            <div>
+                              <span className="text-[#6a6a6a]">API Key:</span>{' '}
+                              <span className="text-[#8a8a8a] font-mono">{config.api_key_masked}</span>
+                            </div>
+                            <div>
+                              <span className="text-[#6a6a6a]">Top K:</span>{' '}
+                              <span className="text-[#00D9FF] font-mono">{config.top_k}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => handleRagTest(config.id)}
+                            disabled={testResult === 'loading'}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-[#141414] border border-[#2f2f2f] text-[#8a8a8a] hover:text-[#00D9FF] hover:border-[#00D9FF] transition-colors disabled:opacity-50"
+                          >
+                            {testResult === 'loading' ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Activity className="w-3 h-3" />
+                            )}
+                            Test
+                          </button>
+                          <button
+                            onClick={() => startRagEdit(config)}
+                            className="p-1.5 rounded hover:bg-[#141414] transition-colors text-[#8a8a8a] hover:text-[#FFFFFF]"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setRagDeleteConfirm(config.id)}
+                            className="p-1.5 rounded hover:bg-[#FF4444]/10 transition-colors text-[#8a8a8a] hover:text-[#FF4444]"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-3 mt-6 pt-5 border-t border-[#1A1A1A]">
-                    {ragProvider === 'dify' && (
-                      <>
-                        <button
-                          onClick={async () => {
-                            setRagSaving(true);
-                            try {
-                              const payload: Parameters<typeof saveRAGConfig>[0] = {
-                                provider: 'dify',
-                                dify_base_url: ragBaseUrl.trim(),
-                                dify_api_key: ragApiKey || '',
-                                dify_dataset_id: ragDatasetId.trim(),
-                                top_k: ragTopK,
-                              };
-                              await saveRAGConfig(payload);
-                              queryClient.invalidateQueries({ queryKey: ['rag-config'] });
-                              setRagTestResult(null);
-                            } catch (err) {
-                              setRagTestResult({ success: false, result_count: 0, error: (err as Error).message });
-                            } finally {
-                              setRagSaving(false);
-                            }
-                          }}
-                          disabled={ragSaving || !ragBaseUrl.trim() || !ragDatasetId.trim() || (ragData?.source !== 'database' && !ragApiKey)}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
-                        >
-                          {ragSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                          Save
-                        </button>
-                        <button
-                          onClick={async () => {
-                            setRagTesting(true);
-                            setRagTestResult(null);
-                            try {
-                              const result = await testRAGConfig();
-                              setRagTestResult(result);
-                            } catch {
-                              setRagTestResult({ success: false, result_count: 0, error: 'Network error' });
-                            } finally {
-                              setRagTesting(false);
-                            }
-                          }}
-                          disabled={ragTesting}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-[#141414] border border-[#2f2f2f] text-[#8a8a8a] hover:text-[#00D9FF] hover:border-[#00D9FF] transition-colors disabled:opacity-50"
-                        >
-                          {ragTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
-                          Test
-                        </button>
-                      </>
-                    )}
-                    {ragData?.source === 'database' && (
-                      <button
-                        onClick={() => setRagDeleteConfirm(true)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg text-[#FF4444] hover:bg-[#FF4444]/10 transition-colors ml-auto"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete DB Config
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Test result */}
-                  {ragTestResult && (
-                    <div className={`mt-4 p-3 rounded-lg border text-xs ${
-                      ragTestResult.success
-                        ? 'bg-[#059669]/5 border-[#059669]/20'
-                        : 'bg-[#FF4444]/5 border-[#FF4444]/20'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        {ragTestResult.success ? (
-                          <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-[#FF4444] flex-shrink-0" />
-                        )}
-                        <span className={ragTestResult.success ? 'text-[#059669]' : 'text-[#FF4444]'}>
-                          {ragTestResult.success
-                            ? `Connection successful — ${ragTestResult.result_count} result${ragTestResult.result_count !== 1 ? 's' : ''} returned`
-                            : 'Connection failed'}
-                        </span>
-                      </div>
-                      {ragTestResult.error && (
-                        <p className="mt-1.5 text-[#FF4444]">{ragTestResult.error}</p>
+                      {/* Test result */}
+                      {testResult && testResult !== 'loading' && (
+                        <div className={`mt-3 p-3 rounded-lg border text-xs ${
+                          testResult.success
+                            ? 'bg-[#059669]/5 border-[#059669]/20'
+                            : 'bg-[#FF4444]/5 border-[#FF4444]/20'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            {testResult.success ? (
+                              <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-[#FF4444] flex-shrink-0" />
+                            )}
+                            <span className={testResult.success ? 'text-[#059669]' : 'text-[#FF4444]'}>
+                              {testResult.success
+                                ? `Connection successful — ${testResult.result_count} result${testResult.result_count !== 1 ? 's' : ''} returned`
+                                : 'Connection failed'}
+                            </span>
+                          </div>
+                          {testResult.error && (
+                            <p className="mt-1.5 text-[#FF4444]">{testResult.error}</p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-
-                {/* Info box */}
-                {ragProvider === 'dify' && (
-                  <div className="mt-4 px-4 py-3 bg-[#141414] border border-[#2f2f2f] rounded-lg">
-                    <p className="text-[11px] text-[#6a6a6a]">
-                      RAG uses Dify Knowledge API to retrieve relevant documents, then feeds them to AI for synthesized answers.
-                      Configure an AI Provider in the "AI Providers" tab as well for the AI synthesis step.
-                    </p>
-                  </div>
-                )}
+                  );
+                })}
               </div>
             )}
 
-            {/* Delete confirmation */}
-            {ragDeleteConfirm && (
+            {/* RAG Info */}
+            <div className="mt-4 px-4 py-3 bg-[#141414] border border-[#2f2f2f] rounded-lg max-w-2xl">
+              <p className="text-[11px] text-[#6a6a6a]">
+                RAG uses Dify Knowledge API to retrieve relevant documents, then feeds them to AI for synthesized answers.
+                Configure an AI Provider in the "AI Providers" tab as well for the AI synthesis step.
+              </p>
+            </div>
+
+            {/* RAG Create/Edit Modal */}
+            {showRagForm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-[#0C0C0C] border border-[#2f2f2f] rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-auto">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-sm font-semibold text-[#FFFFFF]">
+                      {editingRagConfig ? `Edit: ${editingRagConfig.name}` : 'Add RAG Config'}
+                    </h3>
+                    <button onClick={() => { setShowRagForm(false); setEditingRagConfig(null); resetRagForm(); }} className="text-[#6a6a6a] hover:text-[#FFFFFF]">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleRagSubmit} className="flex flex-col gap-4">
+                    <div>
+                      <label className="block text-xs text-[#8a8a8a] mb-2">Name *</label>
+                      <input
+                        type="text" value={ragFormName} onChange={(e) => setRagFormName(e.target.value)}
+                        placeholder="My Dify Knowledge Base"
+                        className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8a8a8a] mb-2">Provider</label>
+                      <select disabled className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] focus:outline-none opacity-60">
+                        <option value="dify">Dify</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8a8a8a] mb-2">Base URL *</label>
+                      <input
+                        type="url" value={ragFormBaseUrl} onChange={(e) => setRagFormBaseUrl(e.target.value)}
+                        placeholder="http://your-dify-host/v1"
+                        className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8a8a8a] mb-2">
+                        API Key {editingRagConfig ? '(leave blank to keep current)' : '*'}
+                      </label>
+                      <input
+                        type="password" value={ragFormApiKey} onChange={(e) => setRagFormApiKey(e.target.value)}
+                        placeholder={editingRagConfig ? editingRagConfig.api_key_masked : 'dataset-...'}
+                        className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
+                        required={!editingRagConfig}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8a8a8a] mb-2">Dataset ID *</label>
+                      <input
+                        type="text" value={ragFormDatasetId} onChange={(e) => setRagFormDatasetId(e.target.value)}
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-[#8a8a8a] mb-2">
+                        Top K: <span className="text-[#00D9FF] font-mono">{ragFormTopK}</span>
+                      </label>
+                      <input
+                        type="range" min={1} max={20} step={1} value={ragFormTopK}
+                        onChange={(e) => setRagFormTopK(Number(e.target.value))}
+                        className="w-full accent-accent"
+                      />
+                      <div className="flex justify-between text-[10px] text-[#6a6a6a] mt-0.5">
+                        <span>1 (precise)</span>
+                        <span>20 (broad)</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-3 mt-2">
+                      <button type="button" onClick={() => { setShowRagForm(false); setEditingRagConfig(null); resetRagForm(); }}
+                        className="px-4 py-2 text-sm text-[#8a8a8a] hover:text-[#FFFFFF]">
+                        Cancel
+                      </button>
+                      <button type="submit" disabled={ragCreateMutation.isPending || ragUpdateMutation.isPending}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50">
+                        <Database className="w-4 h-4" />
+                        {ragCreateMutation.isPending || ragUpdateMutation.isPending ? 'Saving...' : editingRagConfig ? 'Update Config' : 'Create Config'}
+                      </button>
+                    </div>
+                    {(ragCreateMutation.isError || ragUpdateMutation.isError) && (
+                      <p className="text-xs text-[#FF4444]">
+                        Failed: {((ragCreateMutation.error || ragUpdateMutation.error) as Error)?.message || 'Unknown error'}
+                      </p>
+                    )}
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* RAG Delete confirmation */}
+            {ragDeleteConfirm !== null && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                 <div className="bg-[#0C0C0C] border border-[#2f2f2f] rounded-xl p-6 w-full max-w-sm shadow-2xl">
                   <h3 className="text-sm font-semibold text-[#FFFFFF] mb-3">Delete RAG Configuration</h3>
                   <p className="text-sm text-[#8a8a8a] mb-5">
-                    This will remove the database configuration. If .env has RAG settings, they will be used as fallback.
+                    Are you sure? This will remove the RAG configuration permanently.
                   </p>
                   <div className="flex justify-end gap-3">
-                    <button onClick={() => setRagDeleteConfirm(false)} className="px-4 py-2 text-sm text-[#8a8a8a] hover:text-[#FFFFFF]">
+                    <button onClick={() => setRagDeleteConfirm(null)} className="px-4 py-2 text-sm text-[#8a8a8a] hover:text-[#FFFFFF]">
                       Cancel
                     </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          await deleteRAGConfig();
-                          queryClient.invalidateQueries({ queryKey: ['rag-config'] });
-                          setRagDeleteConfirm(false);
-                          setRagProvider('disabled');
-                          setRagTestResult(null);
-                        } catch (err) {
-                          setRagDeleteConfirm(false);
-                          setRagTestResult({ success: false, result_count: 0, error: `Delete failed: ${(err as Error).message}` });
-                        }
-                      }}
-                      className="px-4 py-2 bg-[#FF4444] text-white text-sm font-medium rounded-lg hover:opacity-90"
+                      onClick={() => ragDeleteMutation.mutate(ragDeleteConfirm)}
+                      disabled={ragDeleteMutation.isPending}
+                      className="px-4 py-2 bg-[#FF4444] text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
                     >
-                      Delete
+                      {ragDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
                 </div>

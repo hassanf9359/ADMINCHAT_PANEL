@@ -77,6 +77,7 @@ class FAQRuleCreate(BaseModel):
     priority: int = Field(default=0, ge=0)
     daily_ai_limit: Optional[int] = Field(None, ge=0)
     category_id: Optional[int] = None
+    rag_config_id: Optional[int] = None
     is_active: bool = True
 
 
@@ -95,6 +96,7 @@ class FAQRuleUpdate(BaseModel):
     priority: Optional[int] = Field(None, ge=0)
     daily_ai_limit: Optional[int] = Field(None, ge=0)
     category_id: Optional[int] = None
+    rag_config_id: Optional[int] = None
     is_active: Optional[bool] = None
 
 
@@ -110,6 +112,7 @@ class FAQRuleResponse(BaseModel):
     category_name: Optional[str] = None
     faq_group_id: Optional[int] = None
     faq_group_name: Optional[str] = None
+    rag_config_id: Optional[int] = None
     is_active: bool
     questions: List[FAQQuestionResponse] = []
     answers: List[FAQAnswerResponse] = []

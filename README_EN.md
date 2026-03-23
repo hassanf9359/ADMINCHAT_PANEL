@@ -162,9 +162,10 @@ flowchart LR
 | `faq_categories` | FAQ categories (level 2) | name, faq_group_id, bot_group_id |
 | `bot_groups` | Bot groups | name, description |
 | `ai_configs` | AI provider configs | base_url, api_key, model, auth_method, oauth_data |
+| `rag_configs` | RAG knowledge base configs | provider, base_url, api_key, dataset_id, top_k, is_active |
 | `audit_logs` | Audit trail | action, target_type, details |
 
-> 27 tables total. See [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) for full schema.
+> 28 tables total. See [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) for full schema.
 
 ## FAQ Reply Modes
 
@@ -215,7 +216,7 @@ Each method supports both **Named Volumes** (Docker-managed) and **Bind Mounts**
 ADMINCHAT_PANEL/
 ├── backend/                    # Python backend
 │   ├── app/
-│   │   ├── api/v1/            # REST API routes (16 modules)
+│   │   ├── api/v1/            # REST API routes (17 modules)
 │   │   ├── bot/               # Telegram Bot core
 │   │   ├── faq/               # FAQ engine + AI handler + RAG
 │   │   ├── oauth/             # OAuth 2.0 multi-auth
@@ -225,7 +226,7 @@ ADMINCHAT_PANEL/
 │   │   │   ├── claude.py      # Claude OAuth + Session Token
 │   │   │   ├── gemini.py      # Gemini/Google OAuth + PKCE
 │   │   │   └── token_refresh.py # Auto token refresh task
-│   │   ├── models/            # SQLAlchemy ORM (27 tables)
+│   │   ├── models/            # SQLAlchemy ORM (28 tables)
 │   │   ├── schemas/           # Pydantic models
 │   │   ├── services/          # Business services
 │   │   ├── ws/                # WebSocket real-time
@@ -237,7 +238,7 @@ ADMINCHAT_PANEL/
 │   │   ├── components/        # Reusable components
 │   │   │   └── ai/           # OAuth auth components
 │   │   ├── stores/            # Zustand state management
-│   │   ├── services/          # API service layer (10 modules)
+│   │   ├── services/          # API service layer (11 modules)
 │   │   └── hooks/             # Custom hooks
 │   └── Dockerfile
 ├── deploy/                     # Deployment configs

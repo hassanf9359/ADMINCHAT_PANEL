@@ -196,6 +196,18 @@
 - ✅ 20.16 前端: AISettings.tsx 集成新组件 (添加 Provider → 选择认证方式 → 对应流程)
 - ✅ 20.17 代码质量审查: XSS 修复 / 竞态条件修复 / postMessage origin 验证 / 错误处理增强
 
+## Phase 21: RAG 配置模块独立化
+
+- ✅ 21.1 后端: RagConfig SQLAlchemy Model (rag_configs 表)
+- ✅ 21.2 后端: Alembic 迁移 003_add_rag_configs_table
+- ✅ 21.3 后端: RagConfig Schemas (Create/Update/Response/List/Test)
+- ✅ 21.4 后端: /api/v1/rag/configs CRUD + 连通性测试 API
+- ✅ 21.5 后端: RAG Provider 工厂函数适配新 rag_configs 表
+- ✅ 21.6 后端: 从 ai_config.py 移除旧 RAG 端点
+- ✅ 21.7 前端: ragConfigApi.ts RAG 配置 API 调用层
+- ✅ 21.8 前端: AISettings.tsx 适配新 RAG 配置接口
+- ✅ 21.9 前端: types/index.ts 新增 RAG 配置类型定义
+
 ---
 
 ## 变更记录
@@ -207,3 +219,4 @@
 | 2026-03-22 | Phase 18 完成: Bot 分组 + FAQ 分组路由 (v0.5.0) |
 | 2026-03-23 | Phase 19 完成: RAG 模块化接入 Dify Knowledge API (v0.6.0) |
 | 2026-03-23 | Phase 20 完成: AI Provider OAuth 多认证 (v0.7.0) |
+| 2026-03-23 | Phase 21 完成: RAG 配置模块独立化 (v0.7.1) |

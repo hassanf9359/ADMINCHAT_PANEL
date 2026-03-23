@@ -211,6 +211,7 @@ export interface FAQRule {
   category_name?: string;
   faq_group_id?: number;
   faq_group_name?: string;
+  rag_config_id?: number;
   hit_count: number;
   is_active: boolean;
   created_at: string;
@@ -343,13 +344,36 @@ export interface AIUsageStats {
 }
 
 // === RAG ===
-export interface RAGConfig {
-  provider: string | null;
-  dify_base_url?: string;
-  dify_api_key_masked?: string;
-  dify_dataset_id?: string;
+export interface RagConfig {
+  id: number;
+  name: string;
+  provider: string;
+  base_url: string;
+  api_key_masked: string;
+  dataset_id: string;
   top_k: number;
-  source: 'database' | 'env' | 'none';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RagConfigCreate {
+  name: string;
+  provider: string;
+  base_url: string;
+  api_key: string;
+  dataset_id: string;
+  top_k?: number;
+}
+
+export interface RagConfigUpdate {
+  name?: string;
+  provider?: string;
+  base_url?: string;
+  api_key?: string;
+  dataset_id?: string;
+  top_k?: number;
+  is_active?: boolean;
 }
 
 export interface RAGTestResult {

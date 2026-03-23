@@ -100,6 +100,7 @@ def _build_rule_response(rule: FaqRule, total_hits: int = 0) -> dict:
         category_name=category_name,
         faq_group_id=faq_group_id,
         faq_group_name=faq_group_name,
+        rag_config_id=rule.rag_config_id,
         is_active=rule.is_active,
         questions=[
             FAQQuestionResponse.model_validate(rq.question)
@@ -376,6 +377,7 @@ async def create_rule(
         priority=body.priority,
         daily_ai_limit=body.daily_ai_limit,
         category_id=body.category_id,
+        rag_config_id=body.rag_config_id,
         is_active=body.is_active,
     )
     db.add(rule)

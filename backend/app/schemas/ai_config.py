@@ -82,8 +82,6 @@ class AIUsageStatsResponse(BaseModel):
     per_config_stats: List[Dict[str, Any]] = []
 
 
-# ---- RAG Config schemas ----
-
 # ---- OAuth schemas ----
 
 class OAuthAuthUrlRequest(BaseModel):
@@ -131,27 +129,3 @@ class OAuthStatusResponse(BaseModel):
     expires_at: Optional[int] = None
 
 
-class RAGConfigSave(BaseModel):
-    """Request body to save RAG configuration."""
-    provider: str = Field(..., pattern=r"^(dify)$")
-    dify_base_url: str = Field(..., min_length=1, max_length=500)
-    dify_api_key: Optional[str] = Field(None, max_length=500)
-    dify_dataset_id: str = Field(..., min_length=1, max_length=200)
-    top_k: int = Field(default=3, ge=1, le=20)
-
-
-class RAGConfigResponse(BaseModel):
-    """Response for RAG configuration (api_key masked)."""
-    provider: Optional[str] = None
-    dify_base_url: Optional[str] = None
-    dify_api_key_masked: Optional[str] = None
-    dify_dataset_id: Optional[str] = None
-    top_k: int = 3
-    source: str = "none"  # "database" | "env" | "none"
-
-
-class RAGTestResponse(BaseModel):
-    """Response for RAG connectivity test."""
-    success: bool
-    result_count: int = 0
-    error: Optional[str] = None

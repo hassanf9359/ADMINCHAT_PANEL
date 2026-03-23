@@ -171,10 +171,11 @@ flowchart TB
 | `bot_group_members` | Bot 分组成员 | bot_group_id, bot_id (唯一) |
 | `ai_configs` | AI 配置 | base_url, api_key, model, auth_method, oauth_data |
 | `ai_usage_logs` | AI 用量日志 | tokens_used, cost_estimate |
+| `rag_configs` | RAG 知识库配置 | provider, base_url, api_key, dataset_id, top_k, is_active |
 | `system_settings` | 系统设置 | key-value (JSONB) |
 | `audit_logs` | 审计日志 | action, target_type, details |
 
-> 共 27 张表，完整设计参见 [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md)
+> 共 28 张表，完整设计参见 [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md)
 
 ## FAQ 回复模式
 
@@ -237,7 +238,7 @@ docker compose -f docker-compose.full.yml up -d
 ADMINCHAT_PANEL/
 ├── backend/                    # Python 后端
 │   ├── app/
-│   │   ├── api/v1/            # REST API 路由 (16 个模块)
+│   │   ├── api/v1/            # REST API 路由 (17 个模块)
 │   │   ├── bot/               # Telegram Bot 核心
 │   │   │   ├── manager.py     # 多 Bot 生命周期管理
 │   │   │   ├── handlers/      # 消息处理器 (私聊/群组/指令)
@@ -250,6 +251,7 @@ ADMINCHAT_PANEL/
 │   │   │   └── rag/           # 模块化 RAG 系统
 │   │   │       ├── base.py    # RAGProvider 抽象基类
 │   │   │       └── dify_provider.py  # Dify Knowledge API
+│   │   ├── api/v1/rag_config.py     # RAG 配置 CRUD API
 │   │   ├── oauth/             # OAuth 2.0 多认证
 │   │   │   ├── base.py        # OAuthProvider 抽象基类
 │   │   │   ├── encryption.py  # Fernet Token 加密
@@ -257,7 +259,7 @@ ADMINCHAT_PANEL/
 │   │   │   ├── claude.py      # Claude OAuth + Session Token
 │   │   │   ├── gemini.py      # Gemini/Google OAuth + PKCE
 │   │   │   └── token_refresh.py # 自动 Token 刷新任务
-│   │   ├── models/            # SQLAlchemy ORM (27 张表)
+│   │   ├── models/            # SQLAlchemy ORM (28 张表)
 │   │   ├── schemas/           # Pydantic 请求/响应模型
 │   │   ├── services/          # 业务服务 (Redis/审计/媒体/Turnstile)
 │   │   ├── ws/                # WebSocket 实时通信
@@ -272,7 +274,7 @@ ADMINCHAT_PANEL/
 │   │   │       ├── AuthMethodSelector.tsx  # 认证方式选择器
 │   │   │       └── OAuthFlowModal.tsx      # OAuth 流程弹窗
 │   │   ├── stores/            # Zustand 状态管理
-│   │   ├── services/          # API 调用层 (10 个模块)
+│   │   ├── services/          # API 调用层 (11 个模块)
 │   │   ├── hooks/             # 自定义 hooks (WebSocket/debounce)
 │   │   └── types/             # TypeScript 类型定义
 │   └── Dockerfile

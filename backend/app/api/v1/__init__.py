@@ -14,6 +14,7 @@ from app.api.v1.tags import router as tags_router
 from app.api.v1.users import router as users_router
 from app.api.v1.ai_config import router as ai_config_router
 from app.api.v1.ai_oauth import router as ai_oauth_router
+from app.api.v1.rag_config import router as rag_config_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.settings import router as settings_router
 from app.services.turnstile import router as turnstile_router
@@ -34,6 +35,7 @@ router.include_router(blacklist_router, prefix="/blacklist", tags=["Blacklist"])
 router.include_router(faq_router, prefix="/faq", tags=["FAQ"])
 router.include_router(ai_config_router, prefix="/ai", tags=["AI Config"])
 router.include_router(ai_oauth_router, prefix="/ai/oauth", tags=["AI OAuth"])
+router.include_router(rag_config_router, prefix="/rag", tags=["RAG Config"])
 router.include_router(settings_router, prefix="/settings", tags=["Settings"])
 router.include_router(turnstile_router, prefix="/turnstile", tags=["Turnstile"])
 router.include_router(audit_router, prefix="/audit-logs", tags=["Audit Logs"])

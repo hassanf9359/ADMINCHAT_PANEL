@@ -100,9 +100,13 @@ class FaqRule(Base, TimestampMixin):
     category_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("faq_categories.id", ondelete="SET NULL"), nullable=True
     )
+    rag_config_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("rag_configs.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Relationships - all use lazy="selectin" for async compatibility
     category = relationship("FaqCategory", lazy="selectin")
+    rag_config = relationship("RagConfig", lazy="selectin")
     rule_questions = relationship(
         "FaqRuleQuestion", back_populates="rule", cascade="all, delete-orphan",
         lazy="selectin",

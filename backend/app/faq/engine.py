@@ -37,6 +37,7 @@ class FAQMatchResult:
     reply_mode: str = "direct"
     response_mode: str = "single"
     bot_group_id: Optional[int] = None
+    rag_config_id: Optional[int] = None
 
 
 def _resolve_bot_group_id(rule: FaqRule) -> Optional[int]:
@@ -117,6 +118,7 @@ async def match(text: str, db: AsyncSession) -> Optional[FAQMatchResult]:
                     reply_mode=rule.reply_mode,
                     response_mode=rule.response_mode,
                     bot_group_id=_resolve_bot_group_id(rule),
+                    rag_config_id=rule.rag_config_id,
                 )
 
     return None

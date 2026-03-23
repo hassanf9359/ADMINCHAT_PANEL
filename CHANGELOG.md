@@ -2,6 +2,23 @@
 
 All notable changes to ADMINCHAT Panel will be documented in this file.
 
+## [0.7.1] - 2026-03-23
+
+### Refactoring
+- **RAG Config Modularization** - RAG configuration extracted from `ai_config` into standalone module
+  - New `rag_configs` database table (replaces `system_settings` key-value approach)
+  - New `RagConfig` SQLAlchemy model with dedicated fields (name, provider, base_url, api_key, dataset_id, top_k, is_active)
+  - New Alembic migration `003_add_rag_configs_table.py`
+  - Independent API routes at `/api/v1/rag/configs` (CRUD + test connectivity)
+  - New `rag_config.py` API module, schemas (`RagConfigCreate/Update/Response`), and frontend service (`ragConfigApi.ts`)
+  - AI Settings page updated to use new RAG config endpoints
+  - Supports multiple RAG configurations (multi-knowledge-base ready)
+
+### Improvements
+- RAG provider factory updated to read from `rag_configs` table
+- FAQ engine references updated for new RAG config module
+- Cleaner separation of concerns between AI config and RAG config
+
 ## [0.6.0] - 2026-03-23
 
 ### New Features
