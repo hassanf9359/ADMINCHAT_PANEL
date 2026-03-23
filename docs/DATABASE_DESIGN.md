@@ -336,11 +336,17 @@ CREATE TABLE ai_configs (
     name            VARCHAR(100) NOT NULL,         -- 配置名称
     provider        VARCHAR(50) NOT NULL,          -- 'openai','anthropic','custom'
     base_url        VARCHAR(500) NOT NULL,
-    api_key         VARCHAR(500) NOT NULL,         -- 加密存储
+    api_key         VARCHAR(500) NOT NULL,         -- 加密存储 (OAuth 时存 access_token)
     model           VARCHAR(100),
+    api_format      VARCHAR(30) DEFAULT 'openai_chat',
+                    -- 'openai_chat' | 'anthropic_responses'
     default_params  JSONB DEFAULT '{}',            -- 默认参数
                     -- {"max_tokens":500,"temperature":0.7}
     is_active       BOOLEAN DEFAULT TRUE,
+    auth_method     VARCHAR(30) NOT NULL DEFAULT 'api_key',
+                    -- 'api_key' | 'openai_oauth' | 'claude_oauth' | 'claude_session' | 'gemini_oauth'
+    oauth_data      JSONB,                         -- 加密存储 OAuth tokens
+                    -- {"access_token":"<enc>","refresh_token":"<enc>","expires_at":1711234567}
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );

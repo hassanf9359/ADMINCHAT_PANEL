@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,10 @@ class AiConfig(Base, TimestampMixin):
     )  # 'openai_chat' or 'anthropic_responses'
     default_params: Mapped[dict] = mapped_column(JSONB, server_default="{}")
     is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    auth_method: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default="api_key"
+    )  # 'api_key' | 'openai_oauth' | 'claude_oauth' | 'claude_session' | 'gemini_oauth'
+    oauth_data: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     # Relationships
     usage_logs = relationship("AiUsageLog", back_populates="ai_config")

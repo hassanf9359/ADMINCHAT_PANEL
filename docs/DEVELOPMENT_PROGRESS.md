@@ -176,6 +176,26 @@
 - ✅ 19.8 FastAPI lifespan shutdown_rag_provider()
 - ✅ 19.9 代码质量: 移除 debug print / try-finally / 输入校验 / URL 校验
 
+## Phase 20: AI Provider OAuth 多认证
+
+- ✅ 20.1 后端: config.py 追加 OAUTH_ENCRYPTION_KEY / PANEL_BASE_URL
+- ✅ 20.2 后端: AiConfig Model 追加 auth_method + oauth_data 列
+- ✅ 20.3 后端: Alembic 迁移 002_add_oauth_to_ai_configs
+- ✅ 20.4 后端: oauth/encryption.py Fernet 加解密模块
+- ✅ 20.5 后端: oauth/base.py OAuthProvider 抽象基类 + OAuthTokens
+- ✅ 20.6 后端: oauth/openai.py OpenAI OAuth 2.0 + PKCE (Popup)
+- ✅ 20.7 后端: oauth/claude.py Claude OAuth (Code Paste) + Session Token
+- ✅ 20.8 后端: oauth/gemini.py Gemini/Google OAuth 2.0 + PKCE (Popup)
+- ✅ 20.9 后端: api/v1/ai_oauth.py OAuth 端点 (auth-url / callback / exchange / session-token / status)
+- ✅ 20.10 后端: oauth/token_refresh.py 自动 Token 刷新 (每 5 分钟 + 启动时)
+- ✅ 20.11 后端: Schema 更新 (AIConfigResponse 追加 auth_method/oauth_status + 新 OAuth schemas)
+- ✅ 20.12 前端: types/index.ts 追加 AuthMethod / OAuthStatus / OAuthAuthUrlResponse 等类型
+- ✅ 20.13 前端: services/aiOAuthApi.ts OAuth API 调用层
+- ✅ 20.14 前端: components/ai/AuthMethodSelector.tsx 认证方式选择器
+- ✅ 20.15 前端: components/ai/OAuthFlowModal.tsx OAuth 流程弹窗 (Popup/CodePaste/SessionToken)
+- ✅ 20.16 前端: AISettings.tsx 集成新组件 (添加 Provider → 选择认证方式 → 对应流程)
+- ✅ 20.17 代码质量审查: XSS 修复 / 竞态条件修复 / postMessage origin 验证 / 错误处理增强
+
 ---
 
 ## 变更记录
@@ -186,3 +206,4 @@
 | 2026-03-21 | Phase 1-12, 13(部分), 14, 15(部分), 17 全部完成 |
 | 2026-03-22 | Phase 18 完成: Bot 分组 + FAQ 分组路由 (v0.5.0) |
 | 2026-03-23 | Phase 19 完成: RAG 模块化接入 Dify Knowledge API (v0.6.0) |
+| 2026-03-23 | Phase 20 完成: AI Provider OAuth 多认证 (v0.7.0) |

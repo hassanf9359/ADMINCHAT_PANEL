@@ -85,6 +85,13 @@ async def lifespan(app: FastAPI):
         scheduler.start()
         logger.info("APScheduler started")
 
+    # Refresh any OAuth tokens that expired while server was down
+    try:
+        from app.oauth.token_refresh import refresh_expiring_tokens
+        await refresh_expiring_tokens()
+    except Exception:
+        logger.exception("Initial OAuth token refresh failed (non-fatal)")
+
     yield
 
     # --- Shutdown ---

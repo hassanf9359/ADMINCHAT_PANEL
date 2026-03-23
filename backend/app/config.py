@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     DIFY_DATASET_ID: Optional[str] = None        # UUID
     RAG_TOP_K: int = 3
 
+    # OAuth
+    OAUTH_ENCRYPTION_KEY: str = ""     # Fernet key; auto-generated if empty
+    PANEL_BASE_URL: str = ""           # e.g. "https://acp.halotv.top" for OAuth callbacks
+    GEMINI_OAUTH_CLIENT_ID: str = ""
+    GEMINI_OAUTH_CLIENT_SECRET: str = ""
+
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 

@@ -260,6 +260,9 @@ export interface MissedKeyword {
 }
 
 // === AI ===
+export type AuthMethod = 'api_key' | 'openai_oauth' | 'claude_oauth' | 'claude_session' | 'gemini_oauth';
+export type OAuthStatus = 'active' | 'expiring' | 'expired' | 'no_token';
+
 export interface AIConfig {
   id: number;
   name: string;
@@ -273,6 +276,8 @@ export interface AIConfig {
     [key: string]: unknown;
   };
   is_active: boolean;
+  auth_method: AuthMethod;
+  oauth_status?: OAuthStatus | null;
   created_at: string;
   updated_at: string;
 }
@@ -295,6 +300,19 @@ export interface AIConfigUpdate {
   model?: string;
   default_params?: Record<string, unknown>;
   is_active?: boolean;
+}
+
+export interface OAuthAuthUrlResponse {
+  auth_url: string;
+  state: string;
+  flow_type: 'popup' | 'code_paste';
+}
+
+export interface OAuthStatusResponse {
+  config_id: number;
+  auth_method: string;
+  oauth_status: OAuthStatus;
+  expires_at?: number;
 }
 
 export interface AITestResult {
@@ -322,6 +340,22 @@ export interface AIUsageStats {
     tokens: number;
     cost: number;
   }>;
+}
+
+// === RAG ===
+export interface RAGConfig {
+  provider: string | null;
+  dify_base_url?: string;
+  dify_api_key_masked?: string;
+  dify_dataset_id?: string;
+  top_k: number;
+  source: 'database' | 'env' | 'none';
+}
+
+export interface RAGTestResult {
+  success: boolean;
+  result_count: number;
+  error?: string;
 }
 
 // === Settings ===

@@ -468,3 +468,81 @@ Bot Group 内选 Bot: 按 priority 排序，跳过被限流的，全部限流则
 |--------|------|------|------|
 | POST | `/turnstile/verify` | 验证 Turnstile Token | 公开 |
 | GET | `/turnstile/status/:tg_uid` | 检查验证状态 | Bot内部 |
+
+---
+
+## 12. AI OAuth 认证 (AI OAuth)
+
+> 支持 5 种 AI Provider 认证方式: API Key / OpenAI OAuth / Claude OAuth / Claude Session Token / Gemini OAuth
+
+| Method | Path | 说明 | 权限 |
+|--------|------|------|------|
+| POST | `/ai/oauth/{auth_method}/auth-url` | 生成 OAuth 授权 URL + PKCE | super_admin |
+| GET | `/ai/oauth/callback` | OAuth 弹窗回调 (OpenAI/Gemini) | 公开 |
+| POST | `/ai/oauth/claude/exchange` | Claude code-paste 换取 token | super_admin |
+| POST | `/ai/oauth/claude/session-token` | Claude session cookie 换取 token | super_admin |
+| GET | `/ai/oauth/{config_id}/status` | 查询 OAuth token 状态 | super_admin |
+
+### POST /ai/oauth/{auth_method}/auth-url
+
+auth_method 可选值: `openai_oauth` / `claude_oauth` / `gemini_oauth`
+
+```json
+// Request
+{
+  "name": "My OpenAI",
+  "provider": "openai",
+  "base_url": "https://api.openai.com/v1",
+  "model": "gpt-4o",
+  "api_format": "openai_chat",
+  "default_params": { "temperature": 0.7, "max_tokens": 500 }
+}
+
+// Response
+{
+  "auth_url": "https://auth.openai.com/oauth/authorize?...",
+  "state": "random_state_string",
+  "flow_type": "popup"
+}
+```
+
+### GET /ai/oauth/callback
+
+OAuth 弹窗回调端点，由 OAuth provider 重定向调用。成功后返回 HTML 页面，通过 `postMessage` 通知父窗口并自动关闭。
+
+### POST /ai/oauth/claude/exchange
+
+```json
+// Request
+{ "code": "auth_code_from_claude", "state": "state_from_auth_url" }
+
+// Response - AIConfigResponse
+```
+
+### POST /ai/oauth/claude/session-token
+
+```json
+// Request
+{
+  "session_cookie": "sk-ant-...",
+  "name": "Claude Session",
+  "base_url": "https://api.anthropic.com/v1",
+  "model": "claude-sonnet-4-20250514"
+}
+
+// Response - AIConfigResponse
+```
+
+### GET /ai/oauth/{config_id}/status
+
+```json
+// Response
+{
+  "config_id": 1,
+  "auth_method": "openai_oauth",
+  "oauth_status": "active",
+  "expires_at": 1711234567
+}
+```
+
+**Token 自动刷新**: 后台每 5 分钟检查即将过期 (10 分钟内) 的 OAuth token 并自动刷新。连续失败 3 次自动停用配置。

@@ -37,7 +37,7 @@ const AI_MODES: { value: ReplyMode; label: string; desc: string }[] = [
   { value: 'ai_intent', label: 'AI Intent', desc: 'AI classifies intent → routes to FAQ category' },
   { value: 'ai_template', label: 'AI Template', desc: 'Preset template + AI fills dynamic content' },
   { value: 'ai_classify_and_answer', label: 'AI Comprehensive', desc: 'AI answers using FAQ knowledge base' },
-  { value: 'rag', label: 'RAG (reserved)', desc: 'Vector retrieval + AI answer (coming soon)' },
+  { value: 'rag', label: 'RAG Knowledge Base', desc: 'Vector retrieval + AI synthesized answer' },
 ];
 
 export default function FAQEditor() {

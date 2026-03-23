@@ -196,12 +196,22 @@ def setup_scheduler():
         )
         return None
 
+    from apscheduler.triggers.interval import IntervalTrigger
+    from app.oauth.token_refresh import refresh_expiring_tokens
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         analyze_missed_knowledge,
         trigger=CronTrigger(hour=3, minute=0),
         id="analyze_missed_knowledge",
         name="Daily missed knowledge analysis",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        refresh_expiring_tokens,
+        trigger=IntervalTrigger(minutes=5),
+        id="refresh_oauth_tokens",
+        name="Refresh expiring OAuth tokens",
         replace_existing=True,
     )
     return scheduler

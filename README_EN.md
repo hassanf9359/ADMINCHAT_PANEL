@@ -34,7 +34,7 @@ English | [中文](./README.md)
 
 > &reg; 2026 NovaHelix & SAKAKIBARA. All rights reserved.
 
-**Telegram Bidirectional Message Forwarding Bot + Web Customer Service Management Panel** &mdash; An all-in-one Telegram customer service solution with multi-bot pool management, FAQ auto-reply, AI integration, and real-time web chat.
+**Telegram Bidirectional Message Forwarding Bot + Web Customer Service Management Panel** &mdash; An all-in-one Telegram customer service solution with multi-bot pool management, FAQ auto-reply, AI integration, OAuth multi-auth, and real-time web chat.
 
 ---
 
@@ -49,13 +49,14 @@ ADMINCHAT Panel is a full-featured Telegram customer service management system. 
 - **Real-time Web Chat** &mdash; WebSocket-based live messaging, customer service style interface
 - **FAQ Auto-Reply Engine** &mdash; 8 reply modes (regex match / AI direct / AI polish / AI fallback / intent recognition / template fill / RAG knowledge base / comprehensive AI)
 - **RAG Knowledge Base** &mdash; Modular RAG architecture with Dify Knowledge API integration (GTE-multilingual + pgvector), extensible to other RAG platforms
+- **AI Provider OAuth Multi-Auth** &mdash; 5 authentication methods: API Key / OpenAI OAuth / Claude OAuth / Claude Session Token / Gemini OAuth, with automatic token refresh
 - **User Management** &mdash; Tags, groups, blocking, search, full Telegram user info display
 - **AI Integration** &mdash; OpenAI-compatible API format, multi-provider support
 - **Cloudflare Turnstile** &mdash; Human verification for private chat users
 - **Role-Based Access** &mdash; Super Admin / Admin / Agent with granular permissions
 - **Audit Logging** &mdash; Automatic tracking of critical operations
 - **Knowledge Gap Analysis** &mdash; Auto-detect unmatched questions, daily ranking updates at 3 AM
-- **Bot Groups + FAQ Group Routing** &mdash; Organize bots into groups, FAQ rules into Group→Category hierarchy, auto-route replies through the assigned bot group
+- **Bot Groups + FAQ Group Routing** &mdash; Organize bots into groups, FAQ rules into Group-Category hierarchy, auto-route replies through the assigned bot group
 - **Docker Deployment** &mdash; Single `docker compose up` to run, GHCR image publishing
 
 ## Screenshots
@@ -91,6 +92,7 @@ graph TB
         aiogram["aiogram 3 (multi-bot)"]
         SQLAlchemy["SQLAlchemy 2.0"]
         APScheduler["APScheduler"]
+        OAuthModule["OAuth 2.0 + PKCE"]
     end
 
     subgraph Storage
@@ -103,17 +105,20 @@ graph TB
         CloudflareAPI["Cloudflare Turnstile"]
         AIAPI["AI API (OpenAI compatible)"]
         DifyAPI["Dify Knowledge API"]
+        OAuthProviders["OAuth Providers\n(OpenAI/Claude/Gemini)"]
     end
 
     React -->|"REST API + WebSocket"| FastAPI
     FastAPI --> aiogram
     FastAPI --> SQLAlchemy
+    FastAPI --> OAuthModule
     SQLAlchemy --> PostgreSQL
     FastAPI --> Redis
     aiogram -->|"Bot API"| TelegramAPI
     FastAPI -->|"Verification"| CloudflareAPI
     FastAPI -->|"AI Reply"| AIAPI
     FastAPI -->|"RAG Retrieval"| DifyAPI
+    OAuthModule -->|"OAuth 2.0 + PKCE"| OAuthProviders
 ```
 
 ## Message Routing Flow
@@ -129,6 +134,18 @@ flowchart LR
     F & G -->|"Reply to User"| A
 ```
 
+## AI Provider Auth Methods
+
+| Method | Flow | Description |
+|--------|------|-------------|
+| API Key | Manual input | Traditional method: enter Base URL + API Key directly |
+| OpenAI OAuth | Popup | OAuth 2.0 + PKCE, browser popup auth with auto-callback |
+| Claude OAuth | Code paste | OAuth 2.0 + PKCE, Claude shows code on its page, user pastes it |
+| Claude Session Token | Cookie paste | Copy sessionKey cookie from claude.ai, backend auto-exchanges for tokens |
+| Gemini OAuth | Popup | Google OAuth 2.0 + PKCE, browser popup auth with auto-callback |
+
+> Automatic token refresh: background job checks every 5 minutes for expiring tokens and auto-renews them. Also runs on server startup to compensate for downtime.
+
 ## Database Schema
 
 | Table | Description | Key Fields |
@@ -143,11 +160,8 @@ flowchart LR
 | `faq_rules` | FAQ rules | response_mode, reply_mode, category_id |
 | `faq_groups` | FAQ groups (level 1) | name, bot_group_id |
 | `faq_categories` | FAQ categories (level 2) | name, faq_group_id, bot_group_id |
-| `faq_hit_stats` | FAQ hit stats | hit_count, date |
-| `missed_keywords` | Knowledge gaps | keyword, occurrence_count |
 | `bot_groups` | Bot groups | name, description |
-| `bot_group_members` | Bot group members | bot_group_id, bot_id (unique) |
-| `ai_configs` | AI provider configs | base_url, api_key, model |
+| `ai_configs` | AI provider configs | base_url, api_key, model, auth_method, oauth_data |
 | `audit_logs` | Audit trail | action, target_type, details |
 
 > 27 tables total. See [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) for full schema.
@@ -199,26 +213,36 @@ Each method supports both **Named Volumes** (Docker-managed) and **Bind Mounts**
 
 ```
 ADMINCHAT_PANEL/
-├── backend/                    # Python backend (71 files)
+├── backend/                    # Python backend
 │   ├── app/
-│   │   ├── api/v1/            # REST API routes (15 modules)
+│   │   ├── api/v1/            # REST API routes (16 modules)
 │   │   ├── bot/               # Telegram Bot core
 │   │   ├── faq/               # FAQ engine + AI handler + RAG
-│   │   ├── models/            # SQLAlchemy ORM (23 tables)
+│   │   ├── oauth/             # OAuth 2.0 multi-auth
+│   │   │   ├── base.py        # OAuthProvider abstract base
+│   │   │   ├── encryption.py  # Fernet token encryption
+│   │   │   ├── openai.py      # OpenAI OAuth + PKCE
+│   │   │   ├── claude.py      # Claude OAuth + Session Token
+│   │   │   ├── gemini.py      # Gemini/Google OAuth + PKCE
+│   │   │   └── token_refresh.py # Auto token refresh task
+│   │   ├── models/            # SQLAlchemy ORM (27 tables)
 │   │   ├── schemas/           # Pydantic models
 │   │   ├── services/          # Business services
 │   │   ├── ws/                # WebSocket real-time
 │   │   └── tasks/             # Scheduled tasks
 │   └── Dockerfile
-├── frontend/                   # React frontend (35 files)
+├── frontend/                   # React frontend
 │   ├── src/
 │   │   ├── pages/             # 14+ pages
 │   │   ├── components/        # Reusable components
+│   │   │   └── ai/           # OAuth auth components
 │   │   ├── stores/            # Zustand state management
-│   │   ├── services/          # API service layer (9 modules)
+│   │   ├── services/          # API service layer (10 modules)
 │   │   └── hooks/             # Custom hooks
 │   └── Dockerfile
-├── docker-compose.yml
+├── deploy/                     # Deployment configs
+├── docs/                       # Design documents
+├── docker-compose.yml          # Local dev (PG+Redis only)
 ├── .env.example
 └── LICENSE                     # GPL-3.0
 ```

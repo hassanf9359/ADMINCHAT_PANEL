@@ -34,7 +34,7 @@
 
 > &reg; 2026 NovaHelix & SAKAKIBARA. All rights reserved.
 
-**Telegram 双向消息转发 Bot + Web 客服管理面板** &mdash; 一站式 Telegram 客户服务解决方案，支持多 Bot 池管理、FAQ 自动回复、AI 集成和实时 Web 聊天。
+**Telegram 双向消息转发 Bot + Web 客服管理面板** &mdash; 一站式 Telegram 客户服务解决方案，支持多 Bot 池管理、FAQ 自动回复、AI 集成、OAuth 多认证和实时 Web 聊天。
 
 ---
 
@@ -49,6 +49,7 @@ ADMINCHAT Panel 是一个功能完备的 Telegram 客服管理系统。它将 Te
 - **Web 实时聊天** &mdash; 基于 WebSocket 的实时消息推送，类似客服系统的聊天界面
 - **FAQ 自动回复引擎** &mdash; 8 种回复模式（正则匹配/AI 直答/AI 润色/AI 兜底/意图识别/模板填充/RAG 知识库/综合回答）
 - **RAG 知识库检索** &mdash; 模块化 RAG 架构，已对接 Dify Knowledge API（支持 GTE-multilingual + pgvector），可扩展其他 RAG 平台
+- **AI Provider OAuth 多认证** &mdash; 支持 API Key / OpenAI OAuth / Claude OAuth / Claude Session Token / Gemini OAuth 五种认证方式，自动 Token 刷新
 - **用户管理** &mdash; 标签/分组/拉黑/搜索，完整的 TG 用户信息展示
 - **AI 集成** &mdash; 兼容 OpenAI API 格式，支持多 AI 服务商配置
 - **Cloudflare Turnstile** &mdash; 私聊用户人机验证，防止滥用
@@ -91,6 +92,7 @@ graph TB
         aiogram["aiogram 3 (多Bot)"]
         SQLAlchemy["SQLAlchemy 2.0"]
         APScheduler["APScheduler 定时任务"]
+        OAuthModule["OAuth 2.0 + PKCE"]
     end
 
     subgraph 存储 Storage
@@ -103,17 +105,20 @@ graph TB
         CloudflareAPI["Cloudflare Turnstile"]
         AIAPI["AI API (OpenAI 兼容)"]
         DifyAPI["Dify Knowledge API"]
+        OAuthProviders["OAuth Providers\n(OpenAI/Claude/Gemini)"]
     end
 
     React -->|"REST API + WebSocket"| FastAPI
     FastAPI --> aiogram
     FastAPI --> SQLAlchemy
+    FastAPI --> OAuthModule
     SQLAlchemy --> PostgreSQL
     FastAPI --> Redis
     aiogram -->|"Bot API"| TelegramAPI
     FastAPI -->|"人机验证"| CloudflareAPI
     FastAPI -->|"AI 回复"| AIAPI
     FastAPI -->|"RAG 检索"| DifyAPI
+    OAuthModule -->|"OAuth 2.0 + PKCE"| OAuthProviders
 ```
 
 ## 消息路由流程
@@ -127,6 +132,20 @@ flowchart LR
     E -->|"优先原路 Bot"| F["Bot1"]
     E -->|"限流时故障转移"| G["Bot2 / Bot3"]
     F & G -->|"reply 用户消息"| A
+```
+
+## AI Provider OAuth 认证流程
+
+```mermaid
+flowchart TB
+    U["管理员"] -->|"选择认证方式"| S{"认证方式选择"}
+    S -->|"API Key"| K["手动填写 Key"]
+    S -->|"OpenAI/Gemini OAuth"| P["弹窗登录 → 自动回调"]
+    S -->|"Claude OAuth"| C["打开链接 → 粘贴 Code"]
+    S -->|"Claude Session Token"| T["粘贴 Cookie"]
+    K & P & C & T -->|"access_token 存入 api_key 字段"| DB["AiConfig 记录"]
+    DB -->|"每 5 分钟检查过期"| R["自动刷新 Token"]
+    R -->|"更新 api_key"| DB
 ```
 
 ## 数据库结构
@@ -150,7 +169,7 @@ flowchart LR
 | `missed_keywords` | 遗漏知识点 | keyword, occurrence_count |
 | `bot_groups` | Bot 分组 | name, description |
 | `bot_group_members` | Bot 分组成员 | bot_group_id, bot_id (唯一) |
-| `ai_configs` | AI 配置 | base_url, api_key, model |
+| `ai_configs` | AI 配置 | base_url, api_key, model, auth_method, oauth_data |
 | `ai_usage_logs` | AI 用量日志 | tokens_used, cost_estimate |
 | `system_settings` | 系统设置 | key-value (JSONB) |
 | `audit_logs` | 审计日志 | action, target_type, details |
@@ -169,6 +188,18 @@ flowchart LR
 | 模板填充 | `ai_template` | 预设模板 + AI 动态填充变量 |
 | RAG 知识库 | `rag` | 向量检索 (Dify/pgvector) + AI 综合回答 |
 | AI 综合回答 | `ai_classify_and_answer` | AI 参考 FAQ 知识库综合生成回答 |
+
+## AI Provider 认证方式
+
+| 方式 | 流程 | 说明 |
+|------|------|------|
+| API Key | 手动填写 | 传统方式，直接输入 Base URL + API Key |
+| OpenAI OAuth | 弹窗登录 | OAuth 2.0 + PKCE，浏览器弹窗认证后自动回调 |
+| Claude OAuth | 粘贴 Code | OAuth 2.0 + PKCE，Claude 固定回调页面显示 code，手动粘贴 |
+| Claude Session Token | 粘贴 Cookie | 从 claude.ai 复制 sessionKey cookie，后端自动换取 token |
+| Gemini OAuth | 弹窗登录 | Google OAuth 2.0 + PKCE，浏览器弹窗认证后自动回调 |
+
+> Token 自动刷新：后台每 5 分钟检查即将过期的 OAuth token 并自动续期，服务启动时也会补偿刷新。
 
 ## 快速开始
 
@@ -206,7 +237,7 @@ docker compose -f docker-compose.full.yml up -d
 ADMINCHAT_PANEL/
 ├── backend/                    # Python 后端
 │   ├── app/
-│   │   ├── api/v1/            # REST API 路由 (15 个模块)
+│   │   ├── api/v1/            # REST API 路由 (16 个模块)
 │   │   ├── bot/               # Telegram Bot 核心
 │   │   │   ├── manager.py     # 多 Bot 生命周期管理
 │   │   │   ├── handlers/      # 消息处理器 (私聊/群组/指令)
@@ -219,7 +250,14 @@ ADMINCHAT_PANEL/
 │   │   │   └── rag/           # 模块化 RAG 系统
 │   │   │       ├── base.py    # RAGProvider 抽象基类
 │   │   │       └── dify_provider.py  # Dify Knowledge API
-│   │   ├── models/            # SQLAlchemy ORM (23 张表)
+│   │   ├── oauth/             # OAuth 2.0 多认证
+│   │   │   ├── base.py        # OAuthProvider 抽象基类
+│   │   │   ├── encryption.py  # Fernet Token 加密
+│   │   │   ├── openai.py      # OpenAI OAuth + PKCE
+│   │   │   ├── claude.py      # Claude OAuth + Session Token
+│   │   │   ├── gemini.py      # Gemini/Google OAuth + PKCE
+│   │   │   └── token_refresh.py # 自动 Token 刷新任务
+│   │   ├── models/            # SQLAlchemy ORM (27 张表)
 │   │   ├── schemas/           # Pydantic 请求/响应模型
 │   │   ├── services/          # 业务服务 (Redis/审计/媒体/Turnstile)
 │   │   ├── ws/                # WebSocket 实时通信
@@ -229,23 +267,18 @@ ADMINCHAT_PANEL/
 ├── frontend/                   # React 前端
 │   ├── src/
 │   │   ├── pages/             # 14 个页面
-│   │   ├── components/        # 可复用组件 (chat/layout/ui)
+│   │   ├── components/        # 可复用组件 (chat/layout/ui/ai)
+│   │   │   └── ai/           # OAuth 认证组件
+│   │   │       ├── AuthMethodSelector.tsx  # 认证方式选择器
+│   │   │       └── OAuthFlowModal.tsx      # OAuth 流程弹窗
 │   │   ├── stores/            # Zustand 状态管理
-│   │   ├── services/          # API 调用层 (9 个模块)
+│   │   ├── services/          # API 调用层 (10 个模块)
 │   │   ├── hooks/             # 自定义 hooks (WebSocket/debounce)
 │   │   └── types/             # TypeScript 类型定义
 │   └── Dockerfile
-├── docker/                     # Docker 配置
+├── deploy/                     # 部署配置
 ├── docs/                       # 设计文档
-│   ├── ORIGINAL_REQUIREMENTS.md
-│   ├── ARCHITECTURE.md
-│   ├── DATABASE_DESIGN.md
-│   ├── API_DESIGN.md
-│   ├── BOT_DESIGN.md
-│   ├── FAQ_ENGINE.md
-│   ├── FRONTEND_PAGES.md
-│   └── DEPLOYMENT.md
-├── docker-compose.yml
+├── docker-compose.yml          # 本地开发 (仅 PG+Redis)
 ├── .env.example
 └── LICENSE                     # GPL-3.0
 ```

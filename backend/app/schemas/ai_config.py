@@ -53,6 +53,8 @@ class AIConfigResponse(BaseModel):
     api_format: str = "openai_chat"
     default_params: Dict[str, Any] = {}
     is_active: bool = True
+    auth_method: str = "api_key"
+    oauth_status: Optional[str] = None  # 'active' | 'expiring' | 'expired' | 'no_token'
     created_at: datetime
     updated_at: datetime
 
@@ -78,3 +80,78 @@ class AIUsageStatsResponse(BaseModel):
     total_cost: float = 0.0
     daily_stats: List[Dict[str, Any]] = []
     per_config_stats: List[Dict[str, Any]] = []
+
+
+# ---- RAG Config schemas ----
+
+# ---- OAuth schemas ----
+
+class OAuthAuthUrlRequest(BaseModel):
+    """Metadata for creating a config after OAuth success."""
+    name: str = Field(..., min_length=1, max_length=100)
+    provider: str = Field(..., pattern=r"^(openai|anthropic|custom)$")
+    base_url: str = Field(default="", max_length=500)
+    model: Optional[str] = Field(None, max_length=100)
+    api_format: str = Field(default="openai_chat", pattern=r"^(openai_chat|anthropic_responses)$")
+    default_params: Dict[str, Any] = Field(default_factory=lambda: {
+        "temperature": 0.7,
+        "max_tokens": 500,
+    })
+
+
+class OAuthAuthUrlResponse(BaseModel):
+    auth_url: str
+    state: str
+    flow_type: str  # 'popup' | 'code_paste'
+
+
+class OAuthExchangeRequest(BaseModel):
+    """Claude code-paste exchange."""
+    code: str = Field(..., min_length=1)
+    state: str = Field(..., min_length=1)
+
+
+class OAuthSessionTokenRequest(BaseModel):
+    """Claude session cookie exchange."""
+    session_cookie: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1, max_length=100)
+    base_url: str = Field(default="https://api.anthropic.com/v1", max_length=500)
+    model: Optional[str] = Field(None, max_length=100)
+    api_format: str = Field(default="openai_chat", pattern=r"^(openai_chat|anthropic_responses)$")
+    default_params: Dict[str, Any] = Field(default_factory=lambda: {
+        "temperature": 0.7,
+        "max_tokens": 500,
+    })
+
+
+class OAuthStatusResponse(BaseModel):
+    config_id: int
+    auth_method: str
+    oauth_status: str  # 'active' | 'expiring' | 'expired' | 'no_token'
+    expires_at: Optional[int] = None
+
+
+class RAGConfigSave(BaseModel):
+    """Request body to save RAG configuration."""
+    provider: str = Field(..., pattern=r"^(dify)$")
+    dify_base_url: str = Field(..., min_length=1, max_length=500)
+    dify_api_key: Optional[str] = Field(None, max_length=500)
+    dify_dataset_id: str = Field(..., min_length=1, max_length=200)
+    top_k: int = Field(default=3, ge=1, le=20)
+
+
+class RAGConfigResponse(BaseModel):
+    """Response for RAG configuration (api_key masked)."""
+    provider: Optional[str] = None
+    dify_base_url: Optional[str] = None
+    dify_api_key_masked: Optional[str] = None
+    dify_dataset_id: Optional[str] = None
+    top_k: int = 3
+    source: str = "none"  # "database" | "env" | "none"
+
+
+class RAGTestResponse(BaseModel):
+    """Response for RAG connectivity test."""
+    success: bool
+    result_count: int = 0
+    error: Optional[str] = None
