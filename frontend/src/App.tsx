@@ -55,6 +55,7 @@ const MissedKnowledge = lazy(() => import('./pages/MissedKnowledge'));
 const AISettings = lazy(() => import('./pages/AISettings'));
 const AdminManage = lazy(() => import('./pages/AdminManage'));
 const Settings = lazy(() => import('./pages/Settings'));
+const MovieRequests = lazy(() => import('./pages/MovieRequests'));
 const Blacklist = lazy(() => import('./pages/Blacklist'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
 const TurnstileVerify = lazy(() => import('./pages/TurnstileVerify'));
@@ -89,6 +90,7 @@ export default function App() {
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="/blacklist" element={<Blacklist />} />
             <Route path="/bots" element={<BotPool />} />
+            <Route path="/requests" element={<MovieRequests />} />
             <Route path="/faq" element={<FAQList />} />
             <Route path="/faq/new" element={<FAQEditor />} />
             <Route path="/faq/:id/edit" element={<FAQEditor />} />

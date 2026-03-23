@@ -352,6 +352,62 @@ docker network connect your-shared-network gte-embedding
 
 </details>
 
+### 求片通道 (TMDB Movie Requests)
+- **TMDB 求片系统** &mdash; 用户通过 Telegram Bot 发送 TMDB 链接提交求片请求，Bot 自动解析影片信息并回复封面卡片
+- **智能触发规则** &mdash; 私聊 `/req URL` 或 `req URL`；群聊 `@bot req URL`；直接发 URL 不触发，群内 `/req` 不触发（防止多 Bot 重复响应）
+- **自动去重合并** &mdash; 同一影片多人请求时合并为一条记录，`request_count` 累加
+- **TMDB API 多 Key 轮换** &mdash; 卡片式管理多组 API Key，自动限流检测与切换
+- **可选外部媒体库查询** &mdash; 连接 PostgreSQL / MySQL 外部数据库，自动查询影片是否已入库；未配置则所有请求一律推送到后台管理
+- **后台求片管理页面** &mdash; 统计卡片 + 状态筛选 + 封面表格 + 一键 Fulfill/Reject
+
+<details>
+<summary><strong>求片触发规则与流程图（点击展开）</strong></summary>
+
+#### 触发规则
+
+| 场景 | 格式 | 是否触发 | 原因 |
+|------|------|---------|------|
+| 私聊 | `/req https://themoviedb.org/movie/875828` | ✅ | 命令触发 |
+| 私聊 | `req https://themoviedb.org/tv/1396` | ✅ | 简写触发 |
+| 私聊 | `https://themoviedb.org/movie/875828` | ❌ | 裸 URL 不识别 |
+| 群聊 | `@mybot req https://themoviedb.org/movie/875828` | ✅ | @提及 + req |
+| 群聊 | `/req https://themoviedb.org/movie/875828` | ❌ | 防多 Bot 重复 |
+| 群聊 | `https://themoviedb.org/movie/875828` | ❌ | 裸 URL 不识别 |
+
+#### 求片处理流程
+
+```mermaid
+flowchart TD
+    A["用户发送消息"] --> B{"包含 TMDB URL?"}
+    B -->|"否"| C["交给其他 Handler"]
+    B -->|"是"| D{"触发规则检查"}
+    D -->|"不满足"| C
+    D -->|"满足"| E{"DB 去重检查\ntmdb_id + media_type"}
+    E -->|"已存在"| F["request_count++\n新增 MovieRequestUser"]
+    E -->|"首次"| G["调 TMDB API 获取详情"]
+    G --> H{"外部媒体库已配置?"}
+    H -->|"是"| I["查询外部 DB\n检查是否已入库"]
+    H -->|"否"| J["in_library = false"]
+    I --> K["存入 movie_requests"]
+    J --> K
+    F --> L["Bot 回复封面卡片"]
+    K --> L
+```
+
+#### Bot 回复卡片示例
+
+```
+📽 Peaky Blinders: The Immortal Man
+TMDB: 875828 | Movie | 2025
+⭐ 7.8 | 犯罪, 剧情
+
+⏳ Request submitted        ← 首次请求
+🔄 3 users requested        ← 重复请求
+✅ Already in library       ← 已入库
+```
+
+</details>
+
 ### 用户与安全
 - **用户管理** &mdash; 标签/分组/拉黑/搜索，完整的 TG 用户信息展示
 - **Cloudflare Turnstile** &mdash; 私聊用户人机验证，防止滥用

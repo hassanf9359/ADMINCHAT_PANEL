@@ -29,6 +29,55 @@ POST /webhook/bot/<bot_token_hash>
 → 根据 URL 路由到对应 bot 的 Dispatcher
 ```
 
+## Handler 优先级
+
+```
+Dispatcher
+├── 1. commands router     (命令处理: /start, /FaqRanking 等)
+├── 2. movie_request router (求片: /req URL, @bot req URL)
+├── 3. private router      (私聊消息处理)
+└── 4. group router        (群组消息处理)
+```
+
+> movie_request handler 在 private/group 之前注册，确保 TMDB URL 请求优先被截获处理。
+
+## 求片消息处理 (Movie Request)
+
+### 触发规则
+
+| 场景 | 格式 | 触发 | 原因 |
+|------|------|------|------|
+| 私聊 | `/req TMDB_URL` | ✅ | 命令触发 |
+| 私聊 | `req TMDB_URL` | ✅ | 简写触发 |
+| 私聊 | 裸 TMDB URL | ❌ | 不识别为求片 |
+| 群聊 | `@bot req TMDB_URL` | ✅ | @提及+req |
+| 群聊 | `/req TMDB_URL` | ❌ | 防止 Bot 池多 Bot 重复触发 |
+
+### 处理流程
+
+```
+用户发送含 TMDB URL 的消息
+    │
+    ▼
+[MovieRequestTrigger 自定义 Filter]
+    │
+    ├── 私聊: 检查 ^/?req\s 前缀
+    ├── 群聊: 检查 @bot_username\s+req 模式
+    │
+    ▼ (通过)
+[正则提取 tmdb_id + media_type]
+    │
+    ▼
+[DB 去重: tmdb_id + media_type]
+    │
+    ├── 已存在 → request_count++ → 新增 MovieRequestUser → 回复卡片
+    │
+    └── 首次 → 调 TMDB API 获取详情
+              → 查询外部媒体库 (可选)
+              → 存入 movie_requests + MovieRequestUser
+              → 回复封面卡片
+```
+
 ## 消息处理流程
 
 ### 私聊消息 (Private)

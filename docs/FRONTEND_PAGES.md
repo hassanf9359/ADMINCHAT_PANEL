@@ -28,6 +28,7 @@
 | `/faq/:id/edit` | FAQEditor | 编辑 FAQ | admin |
 | `/faq/ranking` | FAQRanking | FAQ 命中排行 | agent |
 | `/faq/missed` | MissedKnowledge | 遗漏知识点 | admin |
+| `/requests` | MovieRequests | 求片管理 | admin |
 | `/ai` | AISettings | AI 配置 | super_admin |
 | `/admins` | AdminManage | 管理员管理 | super_admin |
 | `/settings` | Settings | 系统设置 | super_admin |

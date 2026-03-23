@@ -249,6 +249,28 @@
 - ✅ 25.9 前端: Usage Statistics 面板增强 (4 卡片 + model 列 + token 细分)
 - ✅ 25.10 修复: 聊天 5 秒轮询消息堆叠 (chatStore + ChatWindow scroll)
 
+### Phase 25.5: Keyword Filter Tab Refactor (v0.8.2)
+
+- ✅ 25.5.1 前端: 关键词过滤器从折叠面板改为独立 Tab
+
+### Phase 26: TMDB Movie Request System (v0.9.0)
+
+- ✅ 26.1 后端: TmdbApiKey / MovieRequest / MovieRequestUser / MediaLibraryConfig 4 个模型
+- ✅ 26.2 后端: TmdbClient 多 Key 轮换服务 (services/tmdb.py)
+- ✅ 26.3 后端: 可配置外部媒体库查询服务 (services/media_library.py, 支持 PostgreSQL / MySQL)
+- ✅ 26.4 后端: MovieRequestTrigger 自定义 Filter (私聊 /req|req, 群聊 @bot req)
+- ✅ 26.5 后端: movie_request bot handler (TMDB URL 解析, 去重, 封面卡片回复)
+- ✅ 26.6 后端: REST API (requests CRUD + tmdb-keys CRUD + media-library config)
+- ✅ 26.7 后端: Pydantic schemas (movie_request.py)
+- ✅ 26.8 后端: Alembic migration 007_add_movie_requests (4 张新表)
+- ✅ 26.9 后端: manager.py 注册 movie_request handler (优先级高于 private/group)
+- ✅ 26.10 前端: MovieRequests 页面 (统计卡片 + 状态筛选 + 封面表格 + Fulfill/Reject)
+- ✅ 26.11 前端: movieRequestApi.ts 服务层
+- ✅ 26.12 前端: Settings TMDB Keys Tab (卡片式 Key 管理)
+- ✅ 26.13 前端: Settings Media Library Database 配置区 (表单 + 连接测试)
+- ✅ 26.14 前端: Sidebar 添加 Requests 菜单 (Film 图标, admin+)
+- ✅ 26.15 前端: types/index.ts 添加 MovieRequest / TmdbApiKey / MediaLibraryConfig 类型
+
 ---
 
 ## 变更记录
@@ -266,3 +288,5 @@
 | 2026-03-23 | Phase 24 完成: Code Quality Overhaul (v0.8.0) |
 | 2026-03-23 | Phase 16.4/16.5 更新: N+1 查询修复 + 安全审计完成 |
 | 2026-03-23 | Phase 25 完成: AI Usage Tracking & Cost Estimation (v0.8.1) |
+| 2026-03-23 | Phase 25.5 完成: Keyword Filter Tab Refactor (v0.8.2) |
+| 2026-03-24 | Phase 26 完成: TMDB Movie Request System (v0.9.0) |

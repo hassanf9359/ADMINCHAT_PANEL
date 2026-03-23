@@ -149,6 +149,47 @@ User message → FAQ match → Get template with {variable} placeholders → AI 
 
 </details>
 
+- **TMDB Movie/TV Request System** &mdash; Users submit TMDB URLs via Bot, automatic info fetch, poster card reply, deduplication, and admin management page with fulfill/reject actions
+- **Smart Request Triggers** &mdash; Private: `/req URL` or `req URL`; Group: `@bot req URL`; bare URLs and group `/req` are ignored (prevents duplicate triggers from bot pool)
+- **TMDB API Multi-Key Rotation** &mdash; Card-based key management with automatic rate-limit detection and failover
+- **Optional Media Library Check** &mdash; Connect an external PostgreSQL/MySQL database to check if titles are already in your media library; if not configured, all requests go to the admin panel
+
+<details>
+<summary><strong>Movie Request Trigger Rules & Flow (click to expand)</strong></summary>
+
+#### Trigger Rules
+
+| Context | Format | Triggered? | Reason |
+|---------|--------|-----------|--------|
+| Private | `/req https://themoviedb.org/movie/875828` | ✅ | Command trigger |
+| Private | `req https://themoviedb.org/tv/1396` | ✅ | Shorthand trigger |
+| Private | `https://themoviedb.org/movie/875828` | ❌ | Bare URL ignored |
+| Group | `@mybot req https://themoviedb.org/movie/875828` | ✅ | @mention + req |
+| Group | `/req https://themoviedb.org/movie/875828` | ❌ | Prevents duplicate bot triggers |
+| Group | `https://themoviedb.org/movie/875828` | ❌ | Bare URL ignored |
+
+#### Request Processing Flow
+
+```mermaid
+flowchart TD
+    A["User sends message"] --> B{"Contains TMDB URL?"}
+    B -->|"No"| C["Pass to other handlers"]
+    B -->|"Yes"| D{"Trigger rule check"}
+    D -->|"Not met"| C
+    D -->|"Met"| E{"DB dedup check\ntmdb_id + media_type"}
+    E -->|"Exists"| F["request_count++\nadd MovieRequestUser"]
+    E -->|"First time"| G["Call TMDB API for details"]
+    G --> H{"External media library\nconfigured?"}
+    H -->|"Yes"| I["Query external DB\ncheck if in library"]
+    H -->|"No"| J["in_library = false"]
+    I --> K["Store in movie_requests"]
+    J --> K
+    F --> L["Bot replies with poster card"]
+    K --> L
+```
+
+</details>
+
 - **User Management** &mdash; Tags, groups, blocking, search, and full Telegram user profile display
 - **AI Integration** &mdash; OpenAI-compatible API format with multi-provider configuration
 - **Cloudflare Turnstile** &mdash; Human verification for private chat users to prevent abuse
@@ -474,8 +515,12 @@ flowchart TB
 | `rag_configs` | RAG knowledge base configs | provider, base_url, api_key, dataset_id, top_k, is_active |
 | `system_settings` | System settings | key-value (JSONB) |
 | `audit_logs` | Audit trail | action, target_type, details |
+| `tmdb_api_keys` | TMDB API keys for rotation | api_key, is_rate_limited, request_count |
+| `movie_requests` | Movie/TV requests from users | tmdb_id, media_type, status, request_count, in_library |
+| `movie_request_users` | Request-user junction | movie_request_id, tg_user_id (unique pair) |
+| `media_library_configs` | External media DB config | db_type, host, table_name, tmdb_id_column |
 
-> 30 tables total. See [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) for the full schema.
+> 34 tables total. See [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) for the full schema.
 
 ## FAQ Match Modes
 
@@ -567,7 +612,7 @@ ADMINCHAT_PANEL/
 │   │   ├── api/v1/            # REST API routes (17 modules)
 │   │   ├── bot/               # Telegram Bot core
 │   │   │   ├── manager.py     # Multi-bot lifecycle management
-│   │   │   ├── handlers/      # Message handlers (private/group/commands)
+│   │   │   ├── handlers/      # Message handlers (private/group/commands/movie_request)
 │   │   │   ├── dispatcher.py  # Message dispatch + failover
 │   │   │   └── rate_limiter.py# Rate-limit detection (Redis token bucket)
 │   │   ├── faq/               # FAQ engine
@@ -585,7 +630,7 @@ ADMINCHAT_PANEL/
 │   │   │   ├── claude.py      # Claude OAuth + Session Token
 │   │   │   ├── gemini.py      # Gemini/Google OAuth + PKCE
 │   │   │   └── token_refresh.py # Automatic token refresh task
-│   │   ├── models/            # SQLAlchemy ORM (30 tables)
+│   │   ├── models/            # SQLAlchemy ORM (34 tables)
 │   │   ├── schemas/           # Pydantic request/response models
 │   │   ├── services/          # Business services (Redis/audit/media/Turnstile)
 │   │   ├── ws/                # WebSocket real-time communication

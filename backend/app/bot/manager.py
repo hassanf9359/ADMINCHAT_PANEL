@@ -187,11 +187,14 @@ class BotManager:
         import app.bot.handlers.private as _priv_mod
         import app.bot.handlers.group as _grp_mod
         import app.bot.handlers.commands as _cmd_mod
+        import app.bot.handlers.movie_request as _mr_mod
         importlib.reload(_priv_mod)
         importlib.reload(_grp_mod)
         importlib.reload(_cmd_mod)
+        importlib.reload(_mr_mod)
 
         dp.include_router(_cmd_mod.router)
+        dp.include_router(_mr_mod.router)
         dp.include_router(_priv_mod.router)
         dp.include_router(_grp_mod.router)
 

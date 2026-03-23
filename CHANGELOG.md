@@ -5,6 +5,37 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-03-24
+
+### Added
+- **TMDB Movie/TV Request System** — Users submit TMDB URLs via Telegram, Bot fetches details and stores requests with deduplication
+- Movie request trigger rules: private chat `/req URL` or `req URL`; group chat `@bot req URL`; bare URLs ignored; group `/req` ignored (prevents duplicate triggers from bot pool)
+- TMDB API multi-key rotation with automatic rate-limit detection and failover (`TmdbApiKey` model + `TmdbClient` service)
+- Deduplication: same `tmdb_id + media_type` merges into one request, `request_count` increments, new `MovieRequestUser` row added
+- Bot reply card with poster image, title, year, type, rating, genres, and status (submitted / N users requested / already in library)
+- **Movie Requests management page** (`/requests`) with 4 stat cards (Total/Pending/Fulfilled/Rejected), status filter tabs, poster table, fulfill/reject actions
+- **TMDB Keys management** in Settings page (card-based UI: add/delete keys, status badges, request counters)
+- **Configurable Media Library Database** — optional external DB (PostgreSQL or MySQL) to check if a title is already in the user's media library; if not configured, all requests forward to admin panel
+- Media Library Config UI in Settings TMDB tab: DB type/host/port/database/table/column configuration with connection test
+- REST API: `GET/PATCH /requests`, `GET /requests/stats`, `GET/POST/DELETE /requests/tmdb-keys`, `GET/POST/DELETE /requests/media-library`, `POST /requests/media-library/test`
+- Custom `MovieRequestTrigger` aiogram Filter for context-aware trigger logic (private vs group, mention detection)
+- Alembic migration `007_add_movie_requests` (4 new tables: `tmdb_api_keys`, `movie_requests`, `movie_request_users`, `media_library_configs`)
+- Frontend types: `MovieRequest`, `MovieRequestDetail`, `MovieRequestStats`, `TmdbApiKey`, `MediaLibraryConfig`
+- Sidebar: `Requests` menu item with Film icon (after Bots, `minRole: admin`)
+
+### Changed
+- Bot manager now includes `movie_request` handler router (priority before private/group handlers)
+- Database schema expanded from 30 to 34 tables
+
+[0.9.0]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v0.8.2...v0.9.0
+
+## [0.8.2] - 2026-03-23
+
+### Changed
+- Replaced keyword filter collapsible panel with dedicated tab for cleaner UI
+
+[0.8.2]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v0.8.1...v0.8.2
+
 ## [0.8.1] - 2026-03-23
 
 ### Added

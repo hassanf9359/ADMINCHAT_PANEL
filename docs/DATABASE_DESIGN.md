@@ -2,7 +2,7 @@
 
 ## 数据库: PostgreSQL 16
 
-## ER 关系概览 (30 tables)
+## ER 关系概览 (34 tables)
 
 ```
 admins ──┬── conversations (assigned_to)
@@ -28,6 +28,10 @@ bot_groups ── bot_group_members (多对多)
 missed_keywords ── (独立统计表)
 missed_keyword_filters ── (过滤规则表)
 rag_configs ── (RAG 配置表)
+         │
+tmdb_api_keys ── (TMDB API Key 轮换)
+movie_requests ── movie_request_users ── tg_users (谁请求了哪部片)
+media_library_configs ── (外部媒体库连接配置)
 ```
 
 ## 表结构设计

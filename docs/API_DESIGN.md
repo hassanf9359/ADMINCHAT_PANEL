@@ -599,3 +599,29 @@ OAuth 弹窗回调端点，由 OAuth provider 重定向调用。成功后返回 
 ```
 
 **Token 自动刷新**: 后台每 5 分钟检查即将过期 (10 分钟内) 的 OAuth token 并自动刷新。连续失败 3 次自动停用配置。
+
+## 17. 求片管理 (Movie Requests)
+
+| Method | Path | 说明 | 权限 |
+|--------|------|------|------|
+| GET | `/requests/stats` | 求片统计 (total/pending/fulfilled/rejected) | admin+ |
+| GET | `/requests` | 求片列表 (分页, ?status=&media_type=) | admin+ |
+| GET | `/requests/{id}` | 求片详情 + 请求用户列表 | admin+ |
+| PATCH | `/requests/{id}` | 更新 status / admin_note | admin+ |
+
+## 18. TMDB API Keys
+
+| Method | Path | 说明 | 权限 |
+|--------|------|------|------|
+| GET | `/requests/tmdb-keys` | 列出所有 TMDB API Key | super_admin |
+| POST | `/requests/tmdb-keys` | 添加 Key | super_admin |
+| DELETE | `/requests/tmdb-keys/{id}` | 删除 Key | super_admin |
+
+## 19. 外部媒体库配置 (Media Library Config)
+
+| Method | Path | 说明 | 权限 |
+|--------|------|------|------|
+| GET | `/requests/media-library` | 获取当前配置 | super_admin |
+| POST | `/requests/media-library` | 创建/替换配置 | super_admin |
+| DELETE | `/requests/media-library` | 删除配置（禁用库查询） | super_admin |
+| POST | `/requests/media-library/test` | 测试数据库连接 | super_admin |
