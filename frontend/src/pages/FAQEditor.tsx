@@ -13,7 +13,6 @@ import {
   updateRule,
   getFAQGroups,
 } from '../services/faqApi';
-import { getRagConfigs } from '../services/ragConfigApi';
 import type { MatchMode, ResponseMode, ReplyMode } from '../types';
 
 const MATCH_MODES: { value: MatchMode; label: string; desc: string }[] = [
@@ -55,7 +54,6 @@ export default function FAQEditor() {
   const [priority, setPriority] = useState(0);
   const [dailyAiLimit, setDailyAiLimit] = useState<number | ''>('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [ragConfigId, setRagConfigId] = useState<number | null>(null);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<number>>(new Set());
   const [selectedAnswerIds, setSelectedAnswerIds] = useState<Set<number>>(new Set());
 
