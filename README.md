@@ -74,6 +74,158 @@ ADMINCHAT Panel 是一个功能完备的 Telegram 客服管理系统。它将 Te
 - **AI Provider OAuth 多认证** &mdash; 支持 API Key / OpenAI OAuth / Claude OAuth / Claude Session Token / Gemini OAuth 五种认证方式，自动 Token 刷新
 - **AI 集成** &mdash; 兼容 OpenAI API 格式，支持多 AI 服务商配置
 
+<details>
+<summary><strong>RAG 知识库推荐配置指南（点击展开）</strong></summary>
+
+#### 完整 RAG 客服流程
+
+```
+用户在 Telegram 发消息
+  → ADMINCHAT Bot 收到消息
+  → FAQ Engine 匹配规则（reply_mode=rag）
+  → 调 Dify Knowledge API（把用户问题发过去）
+  → Dify 用 GTE-multilingual-base 把问题转成向量
+  → pgvector 向量搜索，找到最相关的知识库内容
+  → 返回搜索结果给 ADMINCHAT
+  → ADMINCHAT 调 AI API（搜索结果 + 用户问题）
+  → AI 根据知识库内容生成自然语言回答
+  → Bot 回复用户
+```
+
+各组件职责：
+
+| 组件 | 职责 |
+|------|------|
+| **Dify** | 知识库管理 + 向量搜索（只搜不答） |
+| **GTE-multilingual-base** | Embedding 模型（文字→向量，可跑在 CPU 上） |
+| **pgvector**（PostgreSQL 扩展） | 存储和检索向量 |
+| **AI API**（外部，如 GPT/Claude） | 生成最终回答（基于知识库内容润色） |
+| **ADMINCHAT Panel** | 串联所有组件 + Telegram Bot 管理 |
+
+#### 第 1 步：部署 Dify
+
+推荐使用 Dify 官方 Docker Compose 部署。Dify 自带 pgvector 和知识库管理界面。
+
+```bash
+# 克隆 Dify
+git clone https://github.com/langgenius/dify.git
+cd dify/docker
+
+# 复制环境变量
+cp .env.example .env
+
+# 启动（包含 PostgreSQL + pgvector + Redis + Dify API + Web）
+docker compose up -d
+```
+
+启动后访问 `http://your-server-ip` 完成 Dify 初始化设置。
+
+#### 第 2 步：安装 Text Embedding Inference (TEI) 插件
+
+Dify 默认不带本地 Embedding 模型，需要安装 Hugging Face TEI 插件来使用 GTE-multilingual-base。
+
+**方法 A：通过 Dify 插件市场安装（推荐）**
+
+1. 登录 Dify 管理后台
+2. 进入 **插件 (Plugins)** 页面
+3. 搜索 `Text Embedding Inference`
+4. 点击安装
+
+**方法 B：手动部署 TEI 容器**
+
+```bash
+# 部署 TEI 容器（CPU 模式，适合大多数场景）
+docker run -d \
+  --name text-embeddings-inference \
+  --restart unless-stopped \
+  -p 8090:80 \
+  -v tei-data:/data \
+  ghcr.io/huggingface/text-embeddings-inference:cpu-1.5 \
+  --model-id Alibaba-NLP/gte-multilingual-base \
+  --port 80
+
+# 验证是否启动成功
+curl http://localhost:8090/embed \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"inputs": "测试文本"}'
+```
+
+> **注意**：`gte-multilingual-base` 约 1.1GB，首次启动会下载模型，需要等待几分钟。
+
+#### 第 3 步：在 Dify 中配置 Embedding 模型
+
+1. 进入 Dify 后台 → **设置** → **模型供应商**
+2. 找到 **Text Embedding Inference** 或 **Hugging Face**
+3. 配置：
+   - **模型名称**: `gte-multilingual-base`（随意填写，仅做标识）
+   - **服务器 URL**: `http://text-embeddings-inference:80`（Docker 内部网络）或 `http://your-server-ip:8090`（外部访问）
+4. 保存并测试连接
+
+#### 第 4 步：创建知识库并导入文档
+
+1. 进入 Dify → **知识库** → **创建知识库**
+2. 选择 Embedding 模型为刚配置的 `gte-multilingual-base`
+3. 上传文档（支持 TXT、PDF、Markdown、CSV 等）
+4. Dify 会自动分段、向量化并存入 pgvector
+5. 创建完成后，记录：
+   - **Dataset ID**：知识库 URL 中的 UUID（如 `datasets/abc123-def456/...` 中的 `abc123-def456`）
+
+#### 第 5 步：获取 Dify API 凭证
+
+1. 进入 Dify → **知识库** → 选择你的知识库
+2. 进入 **API 访问** 或 **设置**
+3. 获取 **Dataset API Key**（格式为 `dataset-xxxxxxxx`）
+4. 记录 Dify API 地址（通常为 `http://your-server-ip/v1` 或 Docker 内部 `http://docker-api-1:5001/v1`）
+
+#### 第 6 步：在 ADMINCHAT Panel 中配置 RAG
+
+1. 登录 ADMINCHAT 管理面板
+2. 进入 **AI Settings** → **RAG Knowledge Base** 标签页
+3. 点击 **Add RAG Config**，填写：
+   - **Name**: 自定义名称（如 "产品知识库"）
+   - **Provider**: `dify`
+   - **Base URL**: Dify API 地址（如 `http://docker-api-1:5001/v1`）
+   - **API Key**: 上面获取的 Dataset API Key
+   - **Dataset ID**: 上面记录的知识库 UUID
+   - **Top K**: `3`（返回最相关的前 3 条结果）
+4. 点击 **Test** 验证连接，确认返回结果
+5. 保存
+
+#### 第 7 步：配置 FAQ 规则使用 RAG
+
+1. 进入 **FAQ Rules** → 创建或编辑规则
+2. 设置 **Reply Mode** 为 `rag`
+3. 选择刚创建的 **RAG Config**
+4. 推荐搭配 `catch_all` 匹配模式作为兜底规则（低 priority），让所有未被其他规则命中的消息走 RAG
+
+#### 推荐部署架构
+
+```
+┌─────────────────────────────────────────────────┐
+│  Docker Host                                     │
+│                                                   │
+│  ┌─────────────┐  ┌──────────────────────────┐   │
+│  │ ADMINCHAT   │  │ Dify (docker compose)     │   │
+│  │ Backend     │──│  ├─ dify-api              │   │
+│  │ Frontend    │  │  ├─ dify-web              │   │
+│  └─────────────┘  │  ├─ postgres (pgvector)   │   │
+│                    │  ├─ redis                 │   │
+│  ┌─────────────┐  │  └─ ...                   │   │
+│  │ TEI Server  │──│                            │   │
+│  │ (gte-multi) │  └──────────────────────────┘   │
+│  └─────────────┘                                  │
+│                    ┌──────────────────────────┐   │
+│                    │ AI API (外部)             │   │
+│                    │ GPT / Claude / Gemini     │   │
+│                    └──────────────────────────┘   │
+└─────────────────────────────────────────────────┘
+```
+
+> **提示**：如果 ADMINCHAT 和 Dify 在同一台服务器上，使用 Docker 内部网络通信（如 `http://docker-api-1:5001/v1`）可以避免经过外部网络，速度更快且更安全。确保两者在同一个 Docker network 中。
+
+</details>
+
 ### 用户与安全
 - **用户管理** &mdash; 标签/分组/拉黑/搜索，完整的 TG 用户信息展示
 - **Cloudflare Turnstile** &mdash; 私聊用户人机验证，防止滥用

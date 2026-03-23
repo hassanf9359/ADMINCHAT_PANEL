@@ -61,6 +61,158 @@ ADMINCHAT Panel is a production-ready Telegram customer service management syste
 - **Global Error Boundary** &mdash; Frontend error isolation preventing full-page crashes
 - **Docker One-Click Deployment** &mdash; `docker compose up` to run, with pre-built images published to GHCR
 
+<details>
+<summary><strong>RAG Knowledge Base Setup Guide (click to expand)</strong></summary>
+
+#### Complete RAG Customer Service Flow
+
+```
+User sends message on Telegram
+  → ADMINCHAT Bot receives message
+  → FAQ Engine matches rule (reply_mode=rag)
+  → Calls Dify Knowledge API (sends user question)
+  → Dify uses GTE-multilingual-base to vectorize the question
+  → pgvector performs vector search, finds most relevant knowledge
+  → Returns search results to ADMINCHAT
+  → ADMINCHAT calls AI API (search results + user question)
+  → AI generates natural language answer based on knowledge base
+  → Bot replies to user
+```
+
+Component responsibilities:
+
+| Component | Role |
+|-----------|------|
+| **Dify** | Knowledge base management + vector search (retrieval only) |
+| **GTE-multilingual-base** | Embedding model (text → vectors, runs on CPU) |
+| **pgvector** (PostgreSQL extension) | Store and retrieve vectors |
+| **AI API** (external, e.g. GPT/Claude) | Generate final answer (based on retrieved context) |
+| **ADMINCHAT Panel** | Orchestrates all components + Telegram Bot management |
+
+#### Step 1: Deploy Dify
+
+We recommend Dify's official Docker Compose deployment. Dify includes pgvector and a knowledge base management UI out of the box.
+
+```bash
+# Clone Dify
+git clone https://github.com/langgenius/dify.git
+cd dify/docker
+
+# Copy environment variables
+cp .env.example .env
+
+# Start (includes PostgreSQL + pgvector + Redis + Dify API + Web)
+docker compose up -d
+```
+
+After startup, visit `http://your-server-ip` to complete Dify initialization.
+
+#### Step 2: Install Text Embedding Inference (TEI) Plugin
+
+Dify doesn't include a local embedding model by default. You need the Hugging Face TEI plugin to use GTE-multilingual-base.
+
+**Option A: Install via Dify Plugin Marketplace (Recommended)**
+
+1. Log in to Dify admin dashboard
+2. Go to **Plugins** page
+3. Search for `Text Embedding Inference`
+4. Click Install
+
+**Option B: Deploy TEI Container Manually**
+
+```bash
+# Deploy TEI container (CPU mode, suitable for most scenarios)
+docker run -d \
+  --name text-embeddings-inference \
+  --restart unless-stopped \
+  -p 8090:80 \
+  -v tei-data:/data \
+  ghcr.io/huggingface/text-embeddings-inference:cpu-1.5 \
+  --model-id Alibaba-NLP/gte-multilingual-base \
+  --port 80
+
+# Verify it's running
+curl http://localhost:8090/embed \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"inputs": "test text"}'
+```
+
+> **Note**: `gte-multilingual-base` is ~1.1GB. First startup will download the model and may take a few minutes.
+
+#### Step 3: Configure Embedding Model in Dify
+
+1. Go to Dify → **Settings** → **Model Providers**
+2. Find **Text Embedding Inference** or **Hugging Face**
+3. Configure:
+   - **Model Name**: `gte-multilingual-base` (display name only)
+   - **Server URL**: `http://text-embeddings-inference:80` (Docker internal) or `http://your-server-ip:8090` (external)
+4. Save and test the connection
+
+#### Step 4: Create Knowledge Base and Import Documents
+
+1. Go to Dify → **Knowledge** → **Create Knowledge Base**
+2. Select the embedding model you just configured (`gte-multilingual-base`)
+3. Upload documents (supports TXT, PDF, Markdown, CSV, etc.)
+4. Dify will automatically segment, vectorize, and store in pgvector
+5. After creation, note down:
+   - **Dataset ID**: The UUID in the knowledge base URL (e.g. `abc123-def456` from `datasets/abc123-def456/...`)
+
+#### Step 5: Get Dify API Credentials
+
+1. Go to Dify → **Knowledge** → select your knowledge base
+2. Go to **API Access** or **Settings**
+3. Get the **Dataset API Key** (format: `dataset-xxxxxxxx`)
+4. Note the Dify API address (usually `http://your-server-ip/v1` or Docker internal `http://docker-api-1:5001/v1`)
+
+#### Step 6: Configure RAG in ADMINCHAT Panel
+
+1. Log in to the ADMINCHAT admin panel
+2. Go to **AI Settings** → **RAG Knowledge Base** tab
+3. Click **Add RAG Config** and fill in:
+   - **Name**: Custom name (e.g. "Product Knowledge Base")
+   - **Provider**: `dify`
+   - **Base URL**: Dify API address (e.g. `http://docker-api-1:5001/v1`)
+   - **API Key**: The Dataset API Key from above
+   - **Dataset ID**: The knowledge base UUID from above
+   - **Top K**: `3` (return top 3 most relevant results)
+4. Click **Test** to verify the connection
+5. Save
+
+#### Step 7: Configure FAQ Rules to Use RAG
+
+1. Go to **FAQ Rules** → create or edit a rule
+2. Set **Reply Mode** to `rag`
+3. Select the RAG Config you just created
+4. Recommended: pair with `catch_all` match mode as a low-priority fallback rule, so all unmatched messages go through RAG
+
+#### Recommended Deployment Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│  Docker Host                                     │
+│                                                   │
+│  ┌─────────────┐  ┌──────────────────────────┐   │
+│  │ ADMINCHAT   │  │ Dify (docker compose)     │   │
+│  │ Backend     │──│  ├─ dify-api              │   │
+│  │ Frontend    │  │  ├─ dify-web              │   │
+│  └─────────────┘  │  ├─ postgres (pgvector)   │   │
+│                    │  ├─ redis                 │   │
+│  ┌─────────────┐  │  └─ ...                   │   │
+│  │ TEI Server  │──│                            │   │
+│  │ (gte-multi) │  └──────────────────────────┘   │
+│  └─────────────┘                                  │
+│                    ┌──────────────────────────┐   │
+│                    │ AI API (external)         │   │
+│                    │ GPT / Claude / Gemini     │   │
+│                    └──────────────────────────┘   │
+└─────────────────────────────────────────────────┘
+```
+
+> **Tip**: If ADMINCHAT and Dify are on the same server, use Docker internal networking (e.g. `http://docker-api-1:5001/v1`) to avoid external traffic. This is faster and more secure. Make sure both are on the same Docker network.
+
+</details>
+
 ## Screenshots
 
 <p align="center">
