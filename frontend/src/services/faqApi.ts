@@ -80,6 +80,7 @@ export interface FAQRuleCreateData {
   priority?: number;
   daily_ai_limit?: number;
   category_id?: number | null;
+  rag_config_id?: number | null;
   is_active?: boolean;
 }
 
@@ -93,6 +94,7 @@ export interface FAQRuleUpdateData {
   priority?: number;
   daily_ai_limit?: number;
   category_id?: number | null;
+  rag_config_id?: number | null;
   is_active?: boolean;
 }
 

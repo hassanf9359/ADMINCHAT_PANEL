@@ -16,6 +16,7 @@ import {
   deleteAnswer,
   getFAQGroups,
 } from '../services/faqApi';
+import { getRagConfigs } from '../services/ragConfigApi';
 import type { MatchMode, ResponseMode, ReplyMode } from '../types';
 
 const MATCH_MODES: { value: MatchMode; label: string; desc: string }[] = [
@@ -58,6 +59,7 @@ export default function FAQEditor() {
   const [priority, setPriority] = useState(0);
   const [dailyAiLimit, setDailyAiLimit] = useState<number | ''>('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [ragConfigId, setRagConfigId] = useState<number | null>(null);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<number>>(new Set());
   const [selectedAnswerIds, setSelectedAnswerIds] = useState<Set<number>>(new Set());
 
@@ -96,6 +98,13 @@ export default function FAQEditor() {
     staleTime: 30_000,
   });
 
+  const { data: ragConfigsData } = useQuery({
+    queryKey: ['rag-configs'],
+    queryFn: getRagConfigs,
+    staleTime: 60_000,
+  });
+  const ragConfigs = ragConfigsData?.items ?? [];
+
   const selectedQuestionArray = useMemo(() => Array.from(selectedQuestionIds), [selectedQuestionIds]);
   const selectedAnswerArray = useMemo(() => Array.from(selectedAnswerIds), [selectedAnswerIds]);
 
@@ -122,6 +131,7 @@ export default function FAQEditor() {
       setPriority(existingRule.priority);
       setDailyAiLimit(existingRule.daily_ai_limit ?? '');
       setCategoryId(existingRule.category_id ?? null);
+      setRagConfigId(existingRule.rag_config_id ?? null);
       setSelectedQuestionIds(new Set(existingRule.questions.map((q) => q.id)));
       setSelectedAnswerIds(new Set(existingRule.answers.map((a) => a.id)));
     }
@@ -212,6 +222,7 @@ export default function FAQEditor() {
         priority,
         daily_ai_limit: dailyAiLimit === '' ? undefined : dailyAiLimit,
         category_id: categoryId,
+        rag_config_id: replyMode === 'rag' ? ragConfigId : null,
       };
 
       if (isNew) {
@@ -393,6 +404,28 @@ export default function FAQEditor() {
                     className="w-full h-9 px-3 bg-[#141414] border border-[#8B5CF6]/30 rounded-md text-sm text-[#8B5CF6] font-['JetBrains_Mono'] placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#8B5CF6] transition-colors"
                   />
                   <p className="text-[10px] text-[#6a6a6a] mt-1">Max AI replies per user per day</p>
+                </div>
+              )}
+
+              {replyMode === 'rag' && (
+                <div>
+                  <label className="block text-[11px] text-[#8a8a8a] mb-1.5">RAG Knowledge Base</label>
+                  <select
+                    value={ragConfigId ?? ''}
+                    onChange={(e) => setRagConfigId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full h-9 px-3 bg-[#141414] border border-[#FF8800]/30 rounded-md text-sm text-[#FF8800] focus:outline-none focus:border-[#FF8800] transition-colors appearance-none"
+                  >
+                    <option value="">Select RAG config...</option>
+                    {ragConfigs.map((rc) => (
+                      <option key={rc.id} value={rc.id}>
+                        {rc.name} ({rc.provider})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-[#6a6a6a] mt-1">Vector retrieval knowledge base for this rule</p>
+                  {ragConfigs.length === 0 && (
+                    <p className="text-[10px] text-[#FF4444] mt-1">No RAG configs found. Add one in AI Settings first.</p>
+                  )}
                 </div>
               )}
             </div>
