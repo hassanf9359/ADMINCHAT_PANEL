@@ -1,8 +1,10 @@
 """
 OpenAI OAuth 2.0 + PKCE provider.
 
-Uses popup-based flow: user authenticates in a popup window,
-OpenAI redirects back to our callback endpoint.
+Uses code-paste flow: the Codex CLI client ID only allows localhost redirect.
+User authenticates in a popup, gets redirected to localhost (which won't load),
+then copies the full URL from the address bar and pastes it into the panel.
+The backend extracts the code from the URL and exchanges it for tokens.
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ logger = logging.getLogger(__name__)
 CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 AUTH_URL = "https://auth.openai.com/oauth/authorize"
 TOKEN_URL = "https://auth.openai.com/oauth/token"
+REDIRECT_URI = "http://localhost:1455/auth/callback"
 SCOPES = "openid profile email offline_access"
 
 
@@ -28,6 +31,7 @@ class OpenAIOAuth(OAuthProvider):
     """OpenAI OAuth 2.0 with PKCE (S256)."""
 
     def generate_auth_url(self, redirect_uri: str, state: str) -> tuple[str, dict]:
+        # OpenAI Codex client only allows localhost redirect
         code_verifier = secrets.token_urlsafe(64)
         code_challenge = (
             base64.urlsafe_b64encode(
@@ -39,7 +43,7 @@ class OpenAIOAuth(OAuthProvider):
 
         params = {
             "client_id": CLIENT_ID,
-            "redirect_uri": redirect_uri,
+            "redirect_uri": REDIRECT_URI,
             "response_type": "code",
             "scope": SCOPES,
             "state": state,
@@ -62,7 +66,7 @@ class OpenAIOAuth(OAuthProvider):
                     "grant_type": "authorization_code",
                     "client_id": CLIENT_ID,
                     "code": code,
-                    "redirect_uri": redirect_uri,
+                    "redirect_uri": REDIRECT_URI,
                     "code_verifier": pkce_params["code_verifier"],
                 },
             )

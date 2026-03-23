@@ -44,7 +44,7 @@ router = APIRouter()
 # Provider registry
 PROVIDER_MAP = {
     "openai_oauth": {
-        "flow_type": "popup",
+        "flow_type": "code_paste",
         "provider_value": "openai",
         "base_url_default": "https://api.openai.com/v1",
     },
@@ -59,7 +59,7 @@ PROVIDER_MAP = {
         "base_url_default": "https://api.anthropic.com/v1",
     },
     "gemini_oauth": {
-        "flow_type": "popup",
+        "flow_type": "code_paste",
         "provider_value": "custom",
         "base_url_default": "https://generativelanguage.googleapis.com/v1beta",
     },
@@ -186,13 +186,9 @@ async def generate_auth_url(
 
     state = secrets.token_urlsafe(32)
 
-    # For Claude, redirect_uri is fixed; for others, use our callback
-    if auth_method == "claude_oauth":
-        redirect_uri = "https://platform.claude.com/oauth/code/callback"
-    else:
-        redirect_uri = _get_redirect_uri()
-
-    auth_url, pkce_params = provider.generate_auth_url(redirect_uri, state)
+    # All providers use their own fixed redirect_uri (localhost or provider page)
+    # The redirect_uri param here is ignored by providers that have a fixed one
+    auth_url, pkce_params = provider.generate_auth_url("", state)
 
     # Store state + PKCE + config metadata in Redis (TTL 10 min)
     redis = await get_redis()
@@ -286,6 +282,54 @@ async def oauth_callback(
             </body></html>""",
             status_code=400,
         )
+
+
+@router.post("/exchange", response_model=APIResponse)
+async def exchange_code(
+    body: OAuthExchangeRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[Admin, Depends(require_super_admin)],
+) -> APIResponse:
+    """Generic code exchange for all OAuth providers (code-paste flow).
+
+    The 'code' field can be either:
+    - A raw authorization code
+    - A full callback URL containing ?code=...
+    The backend will extract the code automatically.
+    """
+    import re as _re
+
+    redis = await get_redis()
+    state_data = await _consume_oauth_state(redis, body.state)
+    if not state_data:
+        raise HTTPException(status_code=400, detail="State expired or invalid")
+
+    auth_method, config_meta, pkce_params = _validate_state_data(state_data)
+
+    # Extract code from URL if user pasted the full callback URL
+    code = body.code.strip()
+    code_match = _re.search(r"[?&]code=([^&]+)", code)
+    if code_match:
+        code = code_match.group(1)
+
+    try:
+        provider = _get_provider_instance(auth_method)
+        if not provider:
+            raise ValueError(f"Unknown auth method: {auth_method}")
+        tokens = await provider.exchange_code(code, "", pkce_params)
+        config = await _create_config_from_oauth(db, tokens, auth_method, config_meta)
+
+        from app.api.v1.ai_config import _config_to_response
+        return APIResponse(
+            code=201,
+            message=f"{auth_method} config created",
+            data=_config_to_response(config).model_dump(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Code exchange failed for %s", auth_method)
+        raise HTTPException(status_code=400, detail=str(exc)[:500])
 
 
 @router.post("/claude/exchange", response_model=APIResponse)

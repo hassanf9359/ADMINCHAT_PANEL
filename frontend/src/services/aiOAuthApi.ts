@@ -16,11 +16,11 @@ export async function getOAuthAuthUrl(
   return data.data;
 }
 
-export async function exchangeClaudeCode(
+export async function exchangeOAuthCode(
   code: string,
   state: string,
 ): Promise<AIConfig> {
-  const { data } = await api.post('/ai/oauth/claude/exchange', { code, state });
+  const { data } = await api.post('/ai/oauth/exchange', { code, state });
   return data.data;
 }
 

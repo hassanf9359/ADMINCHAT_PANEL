@@ -1,13 +1,28 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Loader2, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
 import type { AuthMethod } from '../../types';
-import { getOAuthAuthUrl, exchangeClaudeCode, exchangeClaudeSessionToken } from '../../services/aiOAuthApi';
+import { getOAuthAuthUrl, exchangeOAuthCode, exchangeClaudeSessionToken } from '../../services/aiOAuthApi';
 
 const PROVIDER_DEFAULTS: Record<string, { provider: string; base_url: string; model: string; api_format: string }> = {
   openai_oauth: { provider: 'openai', base_url: 'https://api.openai.com/v1', model: 'gpt-4o', api_format: 'openai_chat' },
   claude_oauth: { provider: 'anthropic', base_url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', api_format: 'openai_chat' },
   claude_session: { provider: 'anthropic', base_url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', api_format: 'openai_chat' },
   gemini_oauth: { provider: 'custom', base_url: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash', api_format: 'openai_chat' },
+};
+
+const CODE_PASTE_HINTS: Record<string, { linkText: string; step2Text: string }> = {
+  openai_oauth: {
+    linkText: 'Open OpenAI Authorization',
+    step2Text: 'After login, you will be redirected to a localhost page that won\'t load. Copy the FULL URL from your browser address bar and paste it below:',
+  },
+  claude_oauth: {
+    linkText: 'Open Claude Authorization',
+    step2Text: 'After authorization, Claude will show you a code. Paste it below:',
+  },
+  gemini_oauth: {
+    linkText: 'Open Google Authorization',
+    step2Text: 'After login, you will be redirected to a localhost page that won\'t load. Copy the FULL URL from your browser address bar and paste it below:',
+  },
 };
 
 interface OAuthFlowModalProps {
@@ -31,13 +46,20 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Claude code-paste flow
+  // Code-paste flow (OpenAI / Claude / Gemini)
   const [authUrl, setAuthUrl] = useState('');
   const [oauthState, setOauthState] = useState('');
-  const [claudeCode, setClaudeCode] = useState('');
+  const [pastedCode, setPastedCode] = useState('');
 
   // Claude session token flow
   const [sessionCookie, setSessionCookie] = useState('');
+
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, []);
+
+  const isCodePasteFlow = authMethod === 'openai_oauth' || authMethod === 'claude_oauth' || authMethod === 'gemini_oauth';
 
   const configMeta = {
     name: name.trim(),
@@ -48,54 +70,7 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
     default_params: { temperature, max_tokens: maxTokens },
   };
 
-  // Track timeouts for cleanup on unmount
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  // Listen for popup OAuth completion
-  const handleMessage = useCallback((event: MessageEvent) => {
-    // Validate origin to prevent cross-origin attacks
-    if (event.origin !== window.location.origin) return;
-
-    if (event.data?.type === 'oauth-complete') {
-      setSuccess(true);
-      setLoading(false);
-      timeoutRef.current = setTimeout(() => onSuccess(), 500);
-    } else if (event.data?.type === 'oauth-error') {
-      setError(event.data.error || 'OAuth failed');
-      setLoading(false);
-    }
-  }, [onSuccess]);
-
-  useEffect(() => {
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [handleMessage]);
-
-  // Popup flow (OpenAI / Gemini)
-  const startPopupFlow = async () => {
-    if (!name.trim()) { setError('Name is required'); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await getOAuthAuthUrl(authMethod, configMeta);
-      const popup = window.open(resp.auth_url, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
-      if (!popup) {
-        setError('Popup blocked. Please allow popups for this site.');
-        setLoading(false);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setLoading(false);
-    }
-  };
-
-  // Claude code-paste flow — step 1: get auth URL
+  // Step 1: Get auth URL
   const startCodePasteFlow = async () => {
     if (!name.trim()) { setError('Name is required'); return; }
     setLoading(true);
@@ -111,13 +86,13 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
     }
   };
 
-  // Claude code-paste flow — step 2: exchange code
-  const submitClaudeCode = async () => {
-    if (!claudeCode.trim()) { setError('Code is required'); return; }
+  // Step 2: Exchange code/URL
+  const submitCode = async () => {
+    if (!pastedCode.trim()) { setError('Code or URL is required'); return; }
     setLoading(true);
     setError(null);
     try {
-      await exchangeClaudeCode(claudeCode.trim(), oauthState);
+      await exchangeOAuthCode(pastedCode.trim(), oauthState);
       setSuccess(true);
       timeoutRef.current = setTimeout(() => onSuccess(), 500);
     } catch (err) {
@@ -157,6 +132,7 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
     api_key: 'API Key',
   };
   const methodLabel = methodLabels[authMethod] || authMethod;
+  const hints = CODE_PASTE_HINTS[authMethod];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -256,8 +232,8 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
               </div>
             )}
 
-            {/* Claude code-paste: show auth link + code input when URL is ready */}
-            {authMethod === 'claude_oauth' && authUrl && (
+            {/* Code-paste flow: show auth link + code input when URL is ready */}
+            {isCodePasteFlow && authUrl && hints && (
               <div className="bg-[#141414] border border-[#2f2f2f] rounded-lg p-4 space-y-3">
                 <div>
                   <p className="text-xs text-[#8a8a8a] mb-2">Step 1: Open the link below and authorize:</p>
@@ -268,17 +244,19 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
                     className="inline-flex items-center gap-1.5 text-sm text-[#00D9FF] hover:underline break-all"
                   >
                     <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
-                    Open Claude Authorization
+                    {hints.linkText}
                   </a>
                 </div>
                 <div>
-                  <p className="text-xs text-[#8a8a8a] mb-2">Step 2: Paste the code shown after authorization:</p>
-                  <input
-                    type="text"
-                    value={claudeCode}
-                    onChange={(e) => setClaudeCode(e.target.value)}
-                    placeholder="Paste authorization code here..."
-                    className="w-full h-11 px-4 bg-[#0A0A0A] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
+                  <p className="text-xs text-[#8a8a8a] mb-2">Step 2: {hints.step2Text}</p>
+                  <textarea
+                    value={pastedCode}
+                    onChange={(e) => setPastedCode(e.target.value)}
+                    placeholder={authMethod === 'claude_oauth'
+                      ? 'Paste authorization code here...'
+                      : 'Paste the full URL from your browser address bar here...'}
+                    rows={2}
+                    className="w-full px-4 py-3 bg-[#0A0A0A] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors resize-none"
                   />
                 </div>
               </div>
@@ -302,20 +280,8 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
                 Cancel
               </button>
 
-              {/* Popup flow (OpenAI / Gemini) */}
-              {(authMethod === 'openai_oauth' || authMethod === 'gemini_oauth') && (
-                <button
-                  onClick={startPopupFlow}
-                  disabled={loading || !name.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-                  Authenticate with {methodLabel}
-                </button>
-              )}
-
-              {/* Claude code-paste flow */}
-              {authMethod === 'claude_oauth' && !authUrl && (
+              {/* Code-paste flow: Get Link button (before auth URL is shown) */}
+              {isCodePasteFlow && !authUrl && (
                 <button
                   onClick={startCodePasteFlow}
                   disabled={loading || !name.trim()}
@@ -325,10 +291,12 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
                   Get Authorization Link
                 </button>
               )}
-              {authMethod === 'claude_oauth' && authUrl && (
+
+              {/* Code-paste flow: Exchange Code button (after auth URL is shown) */}
+              {isCodePasteFlow && authUrl && (
                 <button
-                  onClick={submitClaudeCode}
-                  disabled={loading || !claudeCode.trim()}
+                  onClick={submitCode}
+                  disabled={loading || !pastedCode.trim()}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}

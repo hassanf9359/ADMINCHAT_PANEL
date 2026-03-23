@@ -1,7 +1,8 @@
 """
 Google / Gemini OAuth 2.0 + PKCE provider.
 
-Uses popup-based flow similar to OpenAI.
+Uses code-paste flow: user authenticates in a popup, gets redirected
+to localhost (which won't load), copies the URL and pastes it.
 Requires GEMINI_OAUTH_CLIENT_ID and GEMINI_OAUTH_CLIENT_SECRET in .env.
 """
 from __future__ import annotations
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
+REDIRECT_URI = "http://localhost:1455/auth/callback"
 SCOPES = "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever"
 
 
@@ -47,7 +49,7 @@ class GeminiOAuth(OAuthProvider):
 
         params = {
             "client_id": _client_id(),
-            "redirect_uri": redirect_uri,
+            "redirect_uri": REDIRECT_URI,
             "response_type": "code",
             "scope": SCOPES,
             "state": state,
@@ -75,7 +77,7 @@ class GeminiOAuth(OAuthProvider):
                     "client_id": _client_id(),
                     "client_secret": _client_secret(),
                     "code": code,
-                    "redirect_uri": redirect_uri,
+                    "redirect_uri": REDIRECT_URI,
                     "code_verifier": pkce_params["code_verifier"],
                 },
             )
