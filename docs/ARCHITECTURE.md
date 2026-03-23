@@ -47,6 +47,8 @@
                                 │  ├────────────┤  │
                                 │  │FAQ Engine  │  │
                                 │  ├────────────┤  │
+                                │  │RAG Module  │  │
+                                │  ├────────────┤  │
                                 │  │Scheduler   │  │
                                 │  └────────────┘  │
                                 └───┬──────────┬───┘
@@ -111,7 +113,11 @@ backend/
 │   │   ├── engine.py           # 匹配引擎主逻辑
 │   │   ├── matcher.py          # 正则/关键字匹配器
 │   │   ├── ai_handler.py       # AI 回复/润色
-│   │   └── rag_handler.py      # RAG 预留接口
+│   │   ├── rag_handler.py      # RAG 兼容 wrapper
+│   │   └── rag/                # 模块化 RAG 系统
+│   │       ├── __init__.py     # 工厂函数 get_rag_provider()
+│   │       ├── base.py         # RAGProvider 抽象基类
+│   │       └── dify_provider.py # Dify Knowledge API 实现
 │   │
 │   ├── services/               # 业务逻辑层
 │   │   ├── media.py            # 媒体文件缓存管理

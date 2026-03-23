@@ -101,7 +101,7 @@
 - ✅ 10.6 后端: AI 模板填充处理器 (ai_template)
 - ✅ 10.7 后端: AI 综合回答处理器 (ai_classify_and_answer)
 - ✅ 10.8 后端: AI 用量限制 + 统计
-- ✅ 10.9 后端: RAG 接口预留
+- ✅ 10.9 后端: RAG 模块化实现 (Dify Knowledge API)
 - ✅ 10.10 前端: AISettings 配置页
 
 ## Phase 11: 统计面板
@@ -164,6 +164,18 @@
 - ✅ 18.10 前端 FAQEditor Category 选择器
 - ✅ 18.11 Alembic 迁移 (4 张新表 + 1 字段)
 
+## Phase 19: RAG 知识库检索
+
+- ✅ 19.1 RAGProvider 抽象基类 + RAGResult 数据类
+- ✅ 19.2 DifyRAGProvider (Dify Knowledge API hybrid_search)
+- ✅ 19.3 工厂函数 get_rag_provider() (async-safe 单例)
+- ✅ 19.4 RAG 配置项 (RAG_PROVIDER/DIFY_BASE_URL/DIFY_API_KEY/DIFY_DATASET_ID/RAG_TOP_K)
+- ✅ 19.5 Private Handler reply_mode=rag 分支
+- ✅ 19.6 Group Handler reply_mode=rag 分支
+- ✅ 19.7 rag_handler.py 向后兼容 wrapper
+- ✅ 19.8 FastAPI lifespan shutdown_rag_provider()
+- ✅ 19.9 代码质量: 移除 debug print / try-finally / 输入校验 / URL 校验
+
 ---
 
 ## 变更记录
@@ -173,3 +185,4 @@
 | 2026-03-21 | 初始创建开发计划 |
 | 2026-03-21 | Phase 1-12, 13(部分), 14, 15(部分), 17 全部完成 |
 | 2026-03-22 | Phase 18 完成: Bot 分组 + FAQ 分组路由 (v0.5.0) |
+| 2026-03-23 | Phase 19 完成: RAG 模块化接入 Dify Knowledge API (v0.6.0) |

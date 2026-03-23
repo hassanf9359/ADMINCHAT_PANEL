@@ -2,6 +2,37 @@
 
 All notable changes to ADMINCHAT Panel will be documented in this file.
 
+## [0.6.0] - 2026-03-23
+
+### New Features
+- **RAG Knowledge Base** - Modular RAG provider architecture with Dify Knowledge API integration
+  - Abstract `RAGProvider` base class for pluggable backends (Dify, pgvector, custom)
+  - `DifyRAGProvider` implementation calling Dify dataset retrieve API (hybrid_search)
+  - Factory pattern via `get_rag_provider()` with async-safe singleton
+  - `reply_mode=rag` fully functional in both private and group handlers
+  - RAG results fed to AI for synthesized answers, with fallback to raw content
+- **RAG Configuration** - New env vars: `RAG_PROVIDER`, `DIFY_BASE_URL`, `DIFY_API_KEY`, `DIFY_DATASET_ID`, `RAG_TOP_K`
+
+### Code Quality
+- Removed all debug `print` statements from message handlers (PII exposure risk)
+- Added `try/finally` for `AIHandler` resource cleanup on all code paths
+- Added input validation (empty query, top_k bounds) in RAG provider
+- Added URL scheme validation for `DIFY_BASE_URL`
+- Added `shutdown_rag_provider()` in FastAPI lifespan for proper cleanup
+- Fixed `ai_only` mode not checking for empty AI response in private handler
+- Unified fallback model name across all handlers
+
+## [0.5.0] - 2026-03-22
+
+### New Features
+- **Bot Groups + FAQ Groups/Categories** - Full bot group management and FAQ routing
+- **FAQ Group Routing** - Category -> Group -> Fallback inheritance for bot selection
+
+## [0.4.1] - 2026-03-22
+
+### Bug Fixes
+- Removed unused FAQGroup import causing CI build failure
+
 ## [0.4.0] - 2026-03-22
 
 ### New Features

@@ -171,6 +171,13 @@ INIT_ADMIN_PASSWORD=<initial_password>
 # AI_BASE_URL=https://api.openai.com/v1
 # AI_API_KEY=sk-xxx
 # AI_MODEL=gpt-4o-mini
+
+# ===== RAG (可选, 需要 Dify 或其他 RAG 平台) =====
+# RAG_PROVIDER=dify
+# DIFY_BASE_URL=http://your-dify-api:5001/v1
+# DIFY_API_KEY=dataset-xxx
+# DIFY_DATASET_ID=uuid-of-dataset
+# RAG_TOP_K=3
 ```
 
 ## Caddyfile 示例

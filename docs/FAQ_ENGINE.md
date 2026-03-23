@@ -140,30 +140,40 @@ AI Prompt 模板:
 
 适用于答案结构固定但细节动态的场景。
 
-### 模式 7: `rag` — RAG 知识库检索 (预留)
+### 模式 7: `rag` — RAG 知识库检索
 
 ```
-用户消息 → 向量化 → 知识库检索 Top-K 相关片段 → 组合 Prompt → AI 回答
+用户消息 → RAG Provider 检索 Top-K 相关片段 → 拼接 context → AI 综合回答
 ```
 
-**预留接口设计:**
+**模块化架构:**
 
 ```python
-class RAGHandler:
-    async def search(self, query: str, top_k: int = 5) -> list[Document]:
-        """从向量数据库检索相关文档"""
-        raise NotImplementedError("RAG 功能尚未实现")
-
-    async def generate(self, query: str, context: list[Document]) -> str:
-        """基于检索结果生成回答"""
-        raise NotImplementedError("RAG 功能尚未实现")
+# backend/app/faq/rag/
+RAGProvider (抽象基类)
+  ├── DifyRAGProvider      ← 当前实现 (Dify Knowledge API)
+  ├── 未来: PgvectorRAGProvider
+  └── 未来: CustomRAGProvider
 ```
 
-未来接入时只需实现这个接口，可对接:
-- PostgreSQL pgvector
-- Milvus
-- Pinecone
-- 或其他向量数据库
+**当前实现 (Dify):**
+- 调用 Dify Knowledge API: `POST /datasets/{dataset_id}/retrieve`
+- 支持 hybrid_search (向量 + 关键词混合检索)
+- 嵌入模型: GTE-multilingual-base
+- 向量存储: pgvector (通过 Dify 管理)
+
+**配置 (环境变量):**
+
+```bash
+RAG_PROVIDER=dify
+DIFY_BASE_URL=http://your-dify-api:5001/v1
+DIFY_API_KEY=dataset-xxx
+DIFY_DATASET_ID=uuid-of-dataset
+RAG_TOP_K=3
+```
+
+**扩展新 Provider:**
+继承 `RAGProvider` 基类，实现 `search()` 方法，在 `get_rag_provider()` 工厂函数中注册即可。
 
 ### 模式 8: `ai_classify_and_answer` — AI 综合理解后回答
 

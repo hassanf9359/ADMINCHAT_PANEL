@@ -244,15 +244,62 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                         final_answers = list(faq_result.answers) if faq_result.answers else []
                         reply_sender_type = "faq"
 
-                        import sys
-                        print(f"[FAQ] matched: rule_id={faq_result.rule_id}, reply_mode={faq_result.reply_mode}, answers={len(final_answers)}", file=sys.stderr, flush=True)
-                        if faq_result.reply_mode != "direct" and final_answers:
+                        logger.debug("FAQ matched: rule_id=%s, reply_mode=%s, answers=%d", faq_result.rule_id, faq_result.reply_mode, len(final_answers))
+                        if faq_result.reply_mode == "rag":
+                            # RAG mode: search knowledge base, then AI synthesize
+                            try:
+                                from app.faq.rag import get_rag_provider
+                                rag_provider = await get_rag_provider()
+                                if rag_provider:
+                                    rag_results = await rag_provider.search(text_content, top_k=settings.RAG_TOP_K)
+                                    if rag_results:
+                                        rag_context = "\n\n".join(
+                                            f"[{r.source}] {r.content}" if r.source else r.content
+                                            for r in rag_results
+                                        )
+                                        from app.faq.ai_handler import AIHandler, AIConfig as AIRuntimeConfig
+                                        from app.models.ai_config import AiConfig
+
+                                        ai_cfg_result = await session.execute(
+                                            select(AiConfig).where(AiConfig.is_active.is_(True)).limit(1)
+                                        )
+                                        ai_cfg = ai_cfg_result.scalar_one_or_none()
+                                        if ai_cfg:
+                                            handler = AIHandler()
+                                            try:
+                                                runtime = AIRuntimeConfig(
+                                                    base_url=ai_cfg.base_url,
+                                                    api_key=ai_cfg.api_key,
+                                                    model=ai_cfg.model or settings.AI_MODEL or "gpt-4o-mini",
+                                                    max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
+                                                    temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
+                                                    api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
+                                                )
+                                                ai_resp = await handler.reply_ai_classify_and_answer(
+                                                    text_content, rag_context, runtime
+                                                )
+                                                if ai_resp.content:
+                                                    final_answers = [ai_resp.content]
+                                                    reply_sender_type = "ai"
+                                            finally:
+                                                await handler.close()
+                                        else:
+                                            # No AI config: return raw RAG content
+                                            final_answers = [rag_results[0].content]
+                                            reply_sender_type = "faq"
+                                    else:
+                                        logger.info("RAG returned no results, keeping FAQ fallback")
+                                else:
+                                    logger.warning("reply_mode=rag but RAG provider not configured, falling back to direct")
+                            except Exception:
+                                logger.exception("RAG processing failed, falling back to direct answer")
+
+                        elif faq_result.reply_mode != "direct" and final_answers:
                             # AI processing modes
                             try:
                                 from app.faq.ai_handler import AIHandler, AIConfig as AIRuntimeConfig
                                 from app.models.ai_config import AiConfig
 
-                                # Get first active AI config
                                 ai_cfg_result = await session.execute(
                                     select(AiConfig).where(AiConfig.is_active.is_(True)).limit(1)
                                 )
@@ -260,45 +307,44 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
 
                                 if ai_cfg:
                                     handler = AIHandler()
-                                    runtime = AIRuntimeConfig(
-                                        base_url=ai_cfg.base_url,
-                                        api_key=ai_cfg.api_key,
-                                        model=ai_cfg.model or "gpt-5-codex",
-                                        max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
-                                        temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
-                                        api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
-                                    )
-
-                                    if faq_result.reply_mode == "ai_polish":
-                                        print(f"[AI] Polish: q={text_content}, a={final_answers[0]}, url={runtime.base_url}, model={runtime.model}, format={runtime.api_format}", file=sys.stderr, flush=True)
-                                        ai_resp = await handler.reply_ai_polish(
-                                            text_content, final_answers[0], runtime
+                                    try:
+                                        runtime = AIRuntimeConfig(
+                                            base_url=ai_cfg.base_url,
+                                            api_key=ai_cfg.api_key,
+                                            model=ai_cfg.model or settings.AI_MODEL or "gpt-4o-mini",
+                                            max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
+                                            temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
+                                            api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
                                         )
-                                        print(f"[AI] Result: content='{ai_resp.content[:100] if ai_resp.content else 'EMPTY'}', tokens={ai_resp.tokens_used}", file=sys.stderr, flush=True)
-                                        if ai_resp.content:
-                                            final_answers = [ai_resp.content]
-                                            reply_sender_type = "ai"
+
+                                        if faq_result.reply_mode == "ai_polish":
+                                            ai_resp = await handler.reply_ai_polish(
+                                                text_content, final_answers[0], runtime
+                                            )
+                                            if ai_resp.content:
+                                                final_answers = [ai_resp.content]
+                                                reply_sender_type = "ai"
+                                            else:
+                                                logger.warning("AI returned empty content, keeping original FAQ answer")
+                                        elif faq_result.reply_mode == "ai_only":
+                                            ai_resp = await handler.reply_ai_only(text_content, runtime)
+                                            if ai_resp.content:
+                                                final_answers = [ai_resp.content]
+                                                reply_sender_type = "ai"
+                                        elif faq_result.reply_mode == "ai_fallback":
+                                            pass  # FAQ matched, keep FAQ answer
+                                        elif faq_result.reply_mode == "ai_classify_and_answer":
+                                            faq_context = "\n".join(final_answers)
+                                            ai_resp = await handler.reply_ai_classify_and_answer(
+                                                text_content, faq_context, runtime
+                                            )
+                                            if ai_resp.content:
+                                                final_answers = [ai_resp.content]
+                                                reply_sender_type = "ai"
                                         else:
-                                            logger.warning("AI returned empty content, keeping original FAQ answer")
-                                    elif faq_result.reply_mode == "ai_only":
-                                        ai_resp = await handler.reply_ai_only(text_content, runtime)
-                                        final_answers = [ai_resp.content]
-                                        reply_sender_type = "ai"
-                                    elif faq_result.reply_mode == "ai_fallback":
-                                        # FAQ matched, so use FAQ answer (AI only if no match)
-                                        pass  # keep final_answers as-is
-                                    elif faq_result.reply_mode == "ai_classify_and_answer":
-                                        faq_context = "\n".join(final_answers)
-                                        ai_resp = await handler.reply_ai_classify_and_answer(
-                                            text_content, faq_context, runtime
-                                        )
-                                        final_answers = [ai_resp.content]
-                                        reply_sender_type = "ai"
-                                    else:
-                                        # Other modes: use preset answer for now
-                                        pass
-
-                                    await handler.close()
+                                            pass  # Unknown mode: use preset answer
+                                    finally:
+                                        await handler.close()
                                 else:
                                     logger.warning("AI mode %s but no AI config found, falling back to direct", faq_result.reply_mode)
                             except Exception:

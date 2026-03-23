@@ -294,11 +294,60 @@ async def handle_group_message(
                             ))
 
                         # Process reply based on reply_mode
-                        import sys
                         final_answers = list(faq_result.answers) if faq_result.answers else []
                         reply_sender_type = "faq"
 
-                        if faq_result.reply_mode != "direct" and final_answers:
+                        if faq_result.reply_mode == "rag":
+                            # RAG mode: search knowledge base, then AI synthesize
+                            try:
+                                from app.faq.rag import get_rag_provider
+                                from app.config import settings as app_settings
+                                rag_provider = await get_rag_provider()
+                                faq_text_for_rag = mentioned_text or text_content or ""
+                                if rag_provider and faq_text_for_rag:
+                                    rag_results = await rag_provider.search(faq_text_for_rag, top_k=app_settings.RAG_TOP_K)
+                                    if rag_results:
+                                        rag_context = "\n\n".join(
+                                            f"[{r.source}] {r.content}" if r.source else r.content
+                                            for r in rag_results
+                                        )
+                                        from app.faq.ai_handler import AIHandler, AIConfig as AIRuntimeConfig
+                                        from app.models.ai_config import AiConfig
+
+                                        ai_cfg_result = await session.execute(
+                                            select(AiConfig).where(AiConfig.is_active.is_(True)).limit(1)
+                                        )
+                                        ai_cfg = ai_cfg_result.scalar_one_or_none()
+                                        if ai_cfg:
+                                            handler = AIHandler()
+                                            try:
+                                                runtime = AIRuntimeConfig(
+                                                    base_url=ai_cfg.base_url,
+                                                    api_key=ai_cfg.api_key,
+                                                    model=ai_cfg.model or app_settings.AI_MODEL or "gpt-4o-mini",
+                                                    max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
+                                                    temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
+                                                    api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
+                                                )
+                                                ai_resp = await handler.reply_ai_classify_and_answer(
+                                                    faq_text_for_rag, rag_context, runtime
+                                                )
+                                                if ai_resp.content:
+                                                    final_answers = [ai_resp.content]
+                                                    reply_sender_type = "ai"
+                                            finally:
+                                                await handler.close()
+                                        else:
+                                            final_answers = [rag_results[0].content]
+                                            reply_sender_type = "faq"
+                                    else:
+                                        logger.info("RAG returned no results, keeping FAQ fallback")
+                                else:
+                                    logger.warning("reply_mode=rag but RAG provider not configured, falling back to direct")
+                            except Exception:
+                                logger.exception("RAG processing failed in group handler, falling back to direct")
+
+                        elif faq_result.reply_mode != "direct" and final_answers:
                             try:
                                 from app.faq.ai_handler import AIHandler, AIConfig as AIRuntimeConfig
                                 from app.models.ai_config import AiConfig
@@ -310,34 +359,35 @@ async def handle_group_message(
 
                                 if ai_cfg:
                                     handler = AIHandler()
-                                    runtime = AIRuntimeConfig(
-                                        base_url=ai_cfg.base_url,
-                                        api_key=ai_cfg.api_key,
-                                        model=ai_cfg.model or "gpt-5.1-codex",
-                                        max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
-                                        temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
-                                        api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
-                                    )
+                                    try:
+                                        runtime = AIRuntimeConfig(
+                                            base_url=ai_cfg.base_url,
+                                            api_key=ai_cfg.api_key,
+                                            model=ai_cfg.model or "gpt-4o-mini",
+                                            max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
+                                            temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
+                                            api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
+                                        )
 
-                                    faq_text_for_ai = mentioned_text or text_content or ""
-                                    if faq_result.reply_mode == "ai_polish":
-                                        ai_resp = await handler.reply_ai_polish(faq_text_for_ai, final_answers[0], runtime)
-                                        if ai_resp.content:
-                                            final_answers = [ai_resp.content]
-                                            reply_sender_type = "ai"
-                                    elif faq_result.reply_mode == "ai_only":
-                                        ai_resp = await handler.reply_ai_only(faq_text_for_ai, runtime)
-                                        if ai_resp.content:
-                                            final_answers = [ai_resp.content]
-                                            reply_sender_type = "ai"
-                                    elif faq_result.reply_mode == "ai_classify_and_answer":
-                                        faq_context = "\n".join(final_answers)
-                                        ai_resp = await handler.reply_ai_classify_and_answer(faq_text_for_ai, faq_context, runtime)
-                                        if ai_resp.content:
-                                            final_answers = [ai_resp.content]
-                                            reply_sender_type = "ai"
-
-                                    await handler.close()
+                                        faq_text_for_ai = mentioned_text or text_content or ""
+                                        if faq_result.reply_mode == "ai_polish":
+                                            ai_resp = await handler.reply_ai_polish(faq_text_for_ai, final_answers[0], runtime)
+                                            if ai_resp.content:
+                                                final_answers = [ai_resp.content]
+                                                reply_sender_type = "ai"
+                                        elif faq_result.reply_mode == "ai_only":
+                                            ai_resp = await handler.reply_ai_only(faq_text_for_ai, runtime)
+                                            if ai_resp.content:
+                                                final_answers = [ai_resp.content]
+                                                reply_sender_type = "ai"
+                                        elif faq_result.reply_mode == "ai_classify_and_answer":
+                                            faq_context = "\n".join(final_answers)
+                                            ai_resp = await handler.reply_ai_classify_and_answer(faq_text_for_ai, faq_context, runtime)
+                                            if ai_resp.content:
+                                                final_answers = [ai_resp.content]
+                                                reply_sender_type = "ai"
+                                    finally:
+                                        await handler.close()
                             except Exception:
                                 logger.exception("AI processing failed in group handler")
 

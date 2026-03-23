@@ -47,7 +47,8 @@ ADMINCHAT Panel 是一个功能完备的 Telegram 客服管理系统。它将 Te
 - **多 Bot 池管理** &mdash; 支持无限添加 Bot，自动限流检测与故障转移
 - **双向消息转发** &mdash; 私聊 + 群组 @Bot，文本/图片/视频/文件/Markdown 格式完整保留
 - **Web 实时聊天** &mdash; 基于 WebSocket 的实时消息推送，类似客服系统的聊天界面
-- **FAQ 自动回复引擎** &mdash; 8 种回复模式（正则匹配/AI 直答/AI 润色/AI 兜底/意图识别/模板填充/RAG 预留/综合回答）
+- **FAQ 自动回复引擎** &mdash; 8 种回复模式（正则匹配/AI 直答/AI 润色/AI 兜底/意图识别/模板填充/RAG 知识库/综合回答）
+- **RAG 知识库检索** &mdash; 模块化 RAG 架构，已对接 Dify Knowledge API（支持 GTE-multilingual + pgvector），可扩展其他 RAG 平台
 - **用户管理** &mdash; 标签/分组/拉黑/搜索，完整的 TG 用户信息展示
 - **AI 集成** &mdash; 兼容 OpenAI API 格式，支持多 AI 服务商配置
 - **Cloudflare Turnstile** &mdash; 私聊用户人机验证，防止滥用
@@ -101,6 +102,7 @@ graph TB
         TelegramAPI["Telegram Bot API"]
         CloudflareAPI["Cloudflare Turnstile"]
         AIAPI["AI API (OpenAI 兼容)"]
+        DifyAPI["Dify Knowledge API"]
     end
 
     React -->|"REST API + WebSocket"| FastAPI
@@ -111,6 +113,7 @@ graph TB
     aiogram -->|"Bot API"| TelegramAPI
     FastAPI -->|"人机验证"| CloudflareAPI
     FastAPI -->|"AI 回复"| AIAPI
+    FastAPI -->|"RAG 检索"| DifyAPI
 ```
 
 ## 消息路由流程
@@ -164,7 +167,7 @@ flowchart LR
 | AI 兜底 | `ai_fallback` | 先走 FAQ，未命中再交 AI |
 | AI 意图识别 | `ai_intent` | AI 分析意图后路由到对应 FAQ 分类 |
 | 模板填充 | `ai_template` | 预设模板 + AI 动态填充变量 |
-| RAG 知识库 | `rag` | 预留，向量检索 + AI 回答 |
+| RAG 知识库 | `rag` | 向量检索 (Dify/pgvector) + AI 综合回答 |
 | AI 综合回答 | `ai_classify_and_answer` | AI 参考 FAQ 知识库综合生成回答 |
 
 ## 快速开始
@@ -212,7 +215,10 @@ ADMINCHAT_PANEL/
 │   │   ├── faq/               # FAQ 引擎
 │   │   │   ├── engine.py      # 匹配引擎
 │   │   │   ├── ai_handler.py  # AI 回复处理 (8 种模式)
-│   │   │   └── rag_handler.py # RAG 预留接口
+│   │   │   ├── rag_handler.py # RAG 兼容 wrapper
+│   │   │   └── rag/           # 模块化 RAG 系统
+│   │   │       ├── base.py    # RAGProvider 抽象基类
+│   │   │       └── dify_provider.py  # Dify Knowledge API
 │   │   ├── models/            # SQLAlchemy ORM (23 张表)
 │   │   ├── schemas/           # Pydantic 请求/响应模型
 │   │   ├── services/          # 业务服务 (Redis/审计/媒体/Turnstile)

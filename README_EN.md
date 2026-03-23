@@ -47,7 +47,8 @@ ADMINCHAT Panel is a full-featured Telegram customer service management system. 
 - **Multi-Bot Pool** &mdash; Unlimited bot instances with automatic rate-limit detection and failover
 - **Bidirectional Forwarding** &mdash; Private chat + Group @Bot, preserving text/images/videos/files/Markdown
 - **Real-time Web Chat** &mdash; WebSocket-based live messaging, customer service style interface
-- **FAQ Auto-Reply Engine** &mdash; 8 reply modes (regex match / AI direct / AI polish / AI fallback / intent recognition / template fill / RAG ready / comprehensive AI)
+- **FAQ Auto-Reply Engine** &mdash; 8 reply modes (regex match / AI direct / AI polish / AI fallback / intent recognition / template fill / RAG knowledge base / comprehensive AI)
+- **RAG Knowledge Base** &mdash; Modular RAG architecture with Dify Knowledge API integration (GTE-multilingual + pgvector), extensible to other RAG platforms
 - **User Management** &mdash; Tags, groups, blocking, search, full Telegram user info display
 - **AI Integration** &mdash; OpenAI-compatible API format, multi-provider support
 - **Cloudflare Turnstile** &mdash; Human verification for private chat users
@@ -101,6 +102,7 @@ graph TB
         TelegramAPI["Telegram Bot API"]
         CloudflareAPI["Cloudflare Turnstile"]
         AIAPI["AI API (OpenAI compatible)"]
+        DifyAPI["Dify Knowledge API"]
     end
 
     React -->|"REST API + WebSocket"| FastAPI
@@ -111,6 +113,7 @@ graph TB
     aiogram -->|"Bot API"| TelegramAPI
     FastAPI -->|"Verification"| CloudflareAPI
     FastAPI -->|"AI Reply"| AIAPI
+    FastAPI -->|"RAG Retrieval"| DifyAPI
 ```
 
 ## Message Routing Flow
@@ -159,7 +162,7 @@ flowchart LR
 | AI Fallback | `ai_fallback` | Try FAQ first, AI if no match |
 | AI Intent | `ai_intent` | AI classifies intent, routes to FAQ category |
 | Template Fill | `ai_template` | Preset template + AI fills dynamic variables |
-| RAG | `rag` | Reserved for vector retrieval + AI answer |
+| RAG | `rag` | Vector retrieval (Dify/pgvector) + AI synthesized answer |
 | AI Comprehensive | `ai_classify_and_answer` | AI generates answer using FAQ knowledge base |
 
 ## Quick Start
@@ -200,7 +203,7 @@ ADMINCHAT_PANEL/
 │   ├── app/
 │   │   ├── api/v1/            # REST API routes (15 modules)
 │   │   ├── bot/               # Telegram Bot core
-│   │   ├── faq/               # FAQ engine + AI handler
+│   │   ├── faq/               # FAQ engine + AI handler + RAG
 │   │   ├── models/            # SQLAlchemy ORM (23 tables)
 │   │   ├── schemas/           # Pydantic models
 │   │   ├── services/          # Business services

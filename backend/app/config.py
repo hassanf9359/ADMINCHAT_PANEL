@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     AI_API_KEY: Optional[str] = None
     AI_MODEL: Optional[str] = None
 
+    # RAG (optional)
+    RAG_PROVIDER: Optional[str] = None          # "dify" | None
+    DIFY_BASE_URL: Optional[str] = None         # e.g. http://docker-api-1:5001/v1
+    DIFY_API_KEY: Optional[str] = None           # dataset-xxx
+    DIFY_DATASET_ID: Optional[str] = None        # UUID
+    RAG_TOP_K: int = 3
+
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 

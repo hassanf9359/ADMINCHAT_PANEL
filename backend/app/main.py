@@ -99,6 +99,10 @@ async def lifespan(app: FastAPI):
     # Stop bot manager
     await bot_manager.stop()
 
+    # Shut down RAG provider
+    from app.faq.rag import shutdown_rag_provider
+    await shutdown_rag_provider()
+
     # Close Redis connections
     await close_redis()
 
