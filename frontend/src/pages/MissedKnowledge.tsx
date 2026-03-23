@@ -45,7 +45,7 @@ export default function MissedKnowledge() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState<boolean | null>(null);
   const [newPattern, setNewPattern] = useState('');
   const [newMatchMode, setNewMatchMode] = useState<FilterMatchMode>('exact');
   const [newDescription, setNewDescription] = useState('');
@@ -59,6 +59,9 @@ export default function MissedKnowledge() {
     queryKey: ['missed-keyword-filters'],
     queryFn: getMissedKeywordFilters,
   });
+
+  // Auto-open filter panel when filters exist (only on first load)
+  const isFiltersOpen = filtersOpen ?? filters.length > 0;
 
   const resolveMutation = useMutation({
     mutationFn: (id: number) => deleteMissedKeyword(id),
@@ -74,6 +77,7 @@ export default function MissedKnowledge() {
       setNewPattern('');
       setNewMatchMode('exact');
       setNewDescription('');
+      setFiltersOpen(true); // Keep panel open after adding
     },
   });
 
@@ -132,24 +136,24 @@ export default function MissedKnowledge() {
         {/* Keyword Filters Panel */}
         <div className="mb-6">
           <button
-            onClick={() => setFiltersOpen(!filtersOpen)}
+            onClick={() => setFiltersOpen(!isFiltersOpen)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#141414] transition-colors text-sm"
           >
             <Filter size={14} className="text-[#8a8a8a]" />
             <span className="text-[#FFFFFF] font-medium">Keyword Filters</span>
             {filters.length > 0 && (
               <span className="px-1.5 py-0.5 rounded text-xs font-mono bg-[#00D9FF]/10 text-[#00D9FF]">
-                {filters.length}
+                {filters.length} active
               </span>
             )}
-            {filtersOpen ? (
+            {isFiltersOpen ? (
               <ChevronDown size={14} className="text-[#6a6a6a]" />
             ) : (
               <ChevronRight size={14} className="text-[#6a6a6a]" />
             )}
           </button>
 
-          {filtersOpen && (
+          {isFiltersOpen && (
             <div className="mt-2 bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl p-4 space-y-4">
               {/* Add filter row */}
               <div className="flex items-center gap-2">
