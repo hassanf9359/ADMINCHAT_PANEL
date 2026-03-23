@@ -46,6 +46,20 @@ export default function Chat() {
     }
   }, [selectedConversationId, fetchMessages]);
 
+  // Polling fallback: refetch messages for selected conversation every 5s
+  useQuery({
+    queryKey: ['chat-messages-poll', selectedConversationId],
+    queryFn: async () => {
+      if (selectedConversationId) {
+        await fetchMessages(selectedConversationId, 1);
+      }
+      return null;
+    },
+    refetchInterval: 5000,
+    staleTime: 3000,
+    enabled: !!selectedConversationId,
+  });
+
   // WebSocket integration
   const onWSMessage = useCallback(
     (event: WSEvent) => {

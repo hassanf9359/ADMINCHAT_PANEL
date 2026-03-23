@@ -375,7 +375,7 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                                     route_aiogram = get_bot_instance(route_bot.id)
                                     if route_aiogram:
                                         await route_aiogram.send_message(
-                                            chat_id=tg_user.id,
+                                            chat_id=message.chat.id,
                                             text=tg_reply,
                                             parse_mode="HTML",
                                         )
