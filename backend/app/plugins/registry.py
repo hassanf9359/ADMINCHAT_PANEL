@@ -33,7 +33,7 @@ class InstalledPlugin(TimestampMixin, Base):
         String(20), nullable=True
     )
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="installed", index=True
+        String(20), nullable=False, default="installed"
     )
     manifest: Mapped[dict] = mapped_column(JSONB, nullable=False)
     config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
