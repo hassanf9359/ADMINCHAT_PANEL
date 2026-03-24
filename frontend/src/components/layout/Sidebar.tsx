@@ -5,18 +5,20 @@ import {
   MessageSquare,
   Users,
   Bot,
-  Film,
   HelpCircle,
   BarChart3,
   BrainCircuit,
   ShieldCheck,
   Settings,
+  Store,
   Ban,
   BookOpen,
   FileText,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useActivePlugins } from '../../plugins/useInstalledPlugins';
+import { resolveIcon } from '../../plugins/iconResolver';
 import type { Role } from '../../types';
 
 interface NavItem {
@@ -38,7 +40,6 @@ const navItems: NavItem[] = [
   { to: '/users', icon: <Users size={20} />, label: 'Users', minRole: 'agent' },
   { to: '/blacklist', icon: <Ban size={20} />, label: 'Blacklist', minRole: 'agent' },
   { to: '/bots', icon: <Bot size={20} />, label: 'Bots', minRole: 'admin' },
-  { to: '/requests', icon: <Film size={20} />, label: 'Requests', minRole: 'admin' },
   { to: '/faq', icon: <HelpCircle size={20} />, label: 'FAQ', minRole: 'admin' },
   { to: '/faq/ranking', icon: <BarChart3 size={20} />, label: 'Ranking', minRole: 'agent' },
   { to: '/faq/missed', icon: <BookOpen size={20} />, label: 'Missed', minRole: 'admin' },
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { to: '/admins', icon: <ShieldCheck size={20} />, label: 'Admins', minRole: 'super_admin' },
   { to: '/audit-logs', icon: <FileText size={20} />, label: 'Audit Log', minRole: 'super_admin' },
   { to: '/settings', icon: <Settings size={20} />, label: 'Settings', minRole: 'super_admin' },
+  { to: '/market', icon: <Store size={20} />, label: 'Market', minRole: 'admin' },
 ];
 
 function SidebarInner() {
@@ -53,8 +55,24 @@ function SidebarInner() {
   const logout = useAuthStore((s) => s.logout);
   const userRole = user?.role ?? 'agent';
   const [expanded, setExpanded] = useState(false);
+  const { data: activePlugins } = useActivePlugins();
 
-  const visibleItems = navItems.filter(
+  // Build plugin nav items from active plugins' manifests
+  const pluginNavItems: NavItem[] = (activePlugins || [])
+    .flatMap(p => (p.manifest.frontend?.sidebar || []).map(item => ({
+      to: item.path,
+      icon: (() => { const Icon = resolveIcon(item.icon); return <Icon size={20} />; })(),
+      label: item.label,
+      minRole: item.minRole as Role,
+    })));
+
+  // Merge: core items + plugin items (insert after 'bots' position)
+  const allItems = [...navItems];
+  const botsIdx = allItems.findIndex(i => i.to === '/bots');
+  const insertIdx = botsIdx >= 0 ? botsIdx + 1 : allItems.length;
+  allItems.splice(insertIdx, 0, ...pluginNavItems);
+
+  const visibleItems = allItems.filter(
     (item) => roleLevel[userRole] >= roleLevel[item.minRole]
   );
 

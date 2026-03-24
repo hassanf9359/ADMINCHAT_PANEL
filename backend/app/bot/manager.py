@@ -187,16 +187,21 @@ class BotManager:
         import app.bot.handlers.private as _priv_mod
         import app.bot.handlers.group as _grp_mod
         import app.bot.handlers.commands as _cmd_mod
-        import app.bot.handlers.movie_request as _mr_mod
         importlib.reload(_priv_mod)
         importlib.reload(_grp_mod)
         importlib.reload(_cmd_mod)
-        importlib.reload(_mr_mod)
 
         dp.include_router(_cmd_mod.router)
-        dp.include_router(_mr_mod.router)
         dp.include_router(_priv_mod.router)
         dp.include_router(_grp_mod.router)
+
+        # Include plugin bot handlers
+        from app.plugins.loader import get_plugin_manager
+        try:
+            pm = get_plugin_manager()
+            dp.include_router(pm.handler_mount.master_router)
+        except RuntimeError:
+            pass  # Plugin manager not initialized yet (first startup)
 
         # Middleware to inject bot_db_id and bot_username into handler kwargs
         @dp.message.outer_middleware()

@@ -434,7 +434,8 @@ export type WSEvent =
   | { type: 'new_conversation'; data: Conversation }
   | { type: 'conversation_updated'; data: Conversation }
   | { type: 'bot_status'; data: Bot }
-  | { type: 'stats_update'; data: Partial<DashboardStats> };
+  | { type: 'stats_update'; data: Partial<DashboardStats> }
+  | { type: 'plugin_changed'; data: { plugin_id: string; action: string } };
 
 // === Audit Log ===
 export interface AuditLogEntry {
@@ -447,77 +448,6 @@ export interface AuditLogEntry {
   details: Record<string, unknown>;
   ip_address: string | null;
   created_at: string;
-}
-
-// === Movie Requests ===
-export interface MovieRequest {
-  id: number;
-  tmdb_id: number;
-  media_type: 'movie' | 'tv';
-  title: string;
-  original_title?: string;
-  poster_path?: string;
-  backdrop_path?: string;
-  release_date?: string;
-  overview?: string;
-  vote_average?: number;
-  genres?: string;
-  status: 'pending' | 'fulfilled' | 'rejected';
-  admin_note?: string;
-  request_count: number;
-  in_library: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MovieRequestUser {
-  id: number;
-  tg_user_id: number;
-  tg_username?: string;
-  tg_first_name?: string;
-  created_at: string;
-}
-
-export interface MovieRequestDetail extends MovieRequest {
-  request_users: MovieRequestUser[];
-  tmdb_raw?: Record<string, unknown>;
-}
-
-export interface MovieRequestStats {
-  total: number;
-  pending: number;
-  fulfilled: number;
-  rejected: number;
-}
-
-export interface TmdbApiKey {
-  id: number;
-  name: string;
-  api_key_masked: string;
-  access_token_masked?: string;
-  is_active: boolean;
-  is_rate_limited: boolean;
-  rate_limited_until?: string;
-  request_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MediaLibraryConfig {
-  id: number;
-  name: string;
-  db_type: 'postgresql' | 'mysql';
-  host: string;
-  port?: number;
-  database: string;
-  username: string;
-  password_masked: string;
-  table_name: string;
-  tmdb_id_column: string;
-  media_type_column?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 // === Pagination ===

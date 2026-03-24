@@ -74,6 +74,12 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("Failed to start BotManager (will continue without bots)")
 
+    # --- Plugin System ---
+    from app.plugins.loader import PluginManager, _set_plugin_manager
+    plugin_manager = PluginManager(app)
+    results = await plugin_manager.startup()
+    logger.info("Plugin system started: %s", results)
+
     # Start WebSocket pub/sub listener
     from app.ws.chat import ws_manager
     await ws_manager.start_pubsub_listener()
@@ -95,6 +101,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # --- Shutdown ---
+    # Stop plugin system
+    await plugin_manager.shutdown()
+
     # Stop APScheduler
     if scheduler is not None:
         scheduler.shutdown(wait=False)

@@ -17,7 +17,8 @@ from app.api.v1.ai_oauth import router as ai_oauth_router
 from app.api.v1.rag_config import router as rag_config_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.settings import router as settings_router
-from app.api.v1.movie_requests import router as movie_requests_router
+from app.api.v1.market_proxy import router as market_proxy_router
+from app.plugins.routes import router as plugins_router
 from app.services.turnstile import router as turnstile_router
 
 router = APIRouter(prefix="/v1")
@@ -38,6 +39,7 @@ router.include_router(ai_config_router, prefix="/ai", tags=["AI Config"])
 router.include_router(ai_oauth_router, prefix="/ai/oauth", tags=["AI OAuth"])
 router.include_router(rag_config_router, prefix="/rag", tags=["RAG Config"])
 router.include_router(settings_router, prefix="/settings", tags=["Settings"])
-router.include_router(movie_requests_router, prefix="/requests", tags=["Movie Requests"])
+router.include_router(market_proxy_router, prefix="/plugins", tags=["Market Proxy"])
+router.include_router(plugins_router, prefix="/plugins", tags=["Plugins"])
 router.include_router(turnstile_router, prefix="/turnstile", tags=["Turnstile"])
 router.include_router(audit_router, prefix="/audit-logs", tags=["Audit Logs"])

@@ -1,6 +1,8 @@
 import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
+import { useActivePlugins } from './plugins/useInstalledPlugins';
+import { PluginLoader } from './plugins/PluginLoader';
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -55,9 +57,9 @@ const MissedKnowledge = lazy(() => import('./pages/MissedKnowledge'));
 const AISettings = lazy(() => import('./pages/AISettings'));
 const AdminManage = lazy(() => import('./pages/AdminManage'));
 const Settings = lazy(() => import('./pages/Settings'));
-const MovieRequests = lazy(() => import('./pages/MovieRequests'));
 const Blacklist = lazy(() => import('./pages/Blacklist'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
+const Market = lazy(() => import('./pages/Market'));
 const TurnstileVerify = lazy(() => import('./pages/TurnstileVerify'));
 
 function PageLoader() {
@@ -71,39 +73,70 @@ function PageLoader() {
   );
 }
 
+function AppRoutes() {
+  const { data: activePlugins } = useActivePlugins();
+
+  // Build plugin routes from active plugins
+  const pluginRoutes = (activePlugins || []).flatMap(p =>
+    (p.manifest.frontend?.sidebar || []).map(item => ({
+      path: item.path,
+      pluginId: p.plugin_id,
+      pluginName: p.name,
+    }))
+  );
+
+  return (
+    <Routes>
+      {/* Public */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/verify" element={<TurnstileVerify />} />
+
+      {/* Authenticated */}
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/chat/:conversationId" element={<Chat />} />
+        <Route path="/users" element={<UsersGrid />} />
+        <Route path="/users/:id" element={<UserDetail />} />
+        <Route path="/blacklist" element={<Blacklist />} />
+        <Route path="/bots" element={<BotPool />} />
+        <Route path="/faq" element={<FAQList />} />
+        <Route path="/faq/new" element={<FAQEditor />} />
+        <Route path="/faq/:id/edit" element={<FAQEditor />} />
+        <Route path="/faq/ranking" element={<FAQRanking />} />
+        <Route path="/faq/missed" element={<MissedKnowledge />} />
+        <Route path="/ai" element={<AISettings />} />
+        <Route path="/admins" element={<AdminManage />} />
+        <Route path="/audit-logs" element={<AuditLog />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/market" element={<Market />} />
+
+        {/* Dynamic plugin routes */}
+        {pluginRoutes.map(route => (
+          <Route
+            key={route.path}
+            path={`${route.path}/*`}
+            element={
+              <PluginLoader
+                pluginId={route.pluginId}
+                pluginName={route.pluginName}
+              />
+            }
+          />
+        ))}
+      </Route>
+    </Routes>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
-    <BrowserRouter>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {/* Public */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/verify" element={<TurnstileVerify />} />
-
-          {/* Authenticated */}
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/chat/:conversationId" element={<Chat />} />
-            <Route path="/users" element={<UsersGrid />} />
-            <Route path="/users/:id" element={<UserDetail />} />
-            <Route path="/blacklist" element={<Blacklist />} />
-            <Route path="/bots" element={<BotPool />} />
-            <Route path="/requests" element={<MovieRequests />} />
-            <Route path="/faq" element={<FAQList />} />
-            <Route path="/faq/new" element={<FAQEditor />} />
-            <Route path="/faq/:id/edit" element={<FAQEditor />} />
-            <Route path="/faq/ranking" element={<FAQRanking />} />
-            <Route path="/faq/missed" element={<MissedKnowledge />} />
-            <Route path="/ai" element={<AISettings />} />
-            <Route path="/admins" element={<AdminManage />} />
-            <Route path="/audit-logs" element={<AuditLog />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <AppRoutes />
+        </Suspense>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

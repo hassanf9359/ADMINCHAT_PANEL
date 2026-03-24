@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     GEMINI_OAUTH_CLIENT_ID: str = ""
     GEMINI_OAUTH_CLIENT_SECRET: str = ""
 
+    # ACP Market
+    ACP_MARKET_URL: str = "https://acpmarket.novahelix.org/api/v1"
+    ACP_MARKET_API_KEY: str = ""
+
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 
