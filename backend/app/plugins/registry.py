@@ -80,7 +80,6 @@ class PluginSecret(Base):
 
     __table_args__ = (
         UniqueConstraint("plugin_id", "key", name="uq_plugin_secret_plugin_key"),
-        Index("ix_plugin_secrets_plugin_id", "plugin_id"),
     )
 
     def __repr__(self) -> str:
