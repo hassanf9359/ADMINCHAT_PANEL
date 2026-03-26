@@ -248,6 +248,27 @@ class PluginManager:
         # Give health monitor a reference for auto-disable
         self._health.set_plugin_manager(self)
 
+    async def _load_cached_public_key(self) -> None:
+        """Load the Market public key from system_settings (if cached)."""
+        if self._verifier.has_key:
+            return  # Already loaded from env var
+
+        try:
+            from app.models.settings import SystemSetting
+
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    select(SystemSetting).where(
+                        SystemSetting.key == "market_public_key"
+                    )
+                )
+                cached = result.scalar_one_or_none()
+                if cached and cached.value and cached.value.get("public_key"):
+                    self._verifier.set_public_key_pem(cached.value["public_key"])
+                    logger.info("Market public key loaded from system_settings cache")
+        except Exception:
+            logger.debug("Could not load cached Market public key", exc_info=True)
+
     # ------------------------------------------------------------------
     # Lifecycle: startup / shutdown
     # ------------------------------------------------------------------
@@ -260,6 +281,9 @@ class PluginManager:
         """
         global _plugin_manager
         _plugin_manager = self
+
+        # Try to load Market public key from system_settings cache
+        await self._load_cached_public_key()
 
         results: dict[str, str] = {}
 

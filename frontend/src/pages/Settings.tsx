@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Clock, Shield, Database, Settings as SettingsIcon, Loader2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Save, Clock, Shield, Database, Settings as SettingsIcon, Loader2, RefreshCw, ExternalLink, LogIn, Key, Unplug, Info, CheckCircle2 } from 'lucide-react';
 import Header from '../components/layout/Header';
 import { getSettings, updateSettings, getVersionInfo } from '../services/settingsApi';
+import { getMarketStatus, marketConnect, marketDisconnect } from '../services/marketApi';
+import type { MarketStatus } from '../services/marketApi';
 import { useActivePlugins } from '../plugins/useInstalledPlugins';
 import { PluginLoader } from '../plugins/PluginLoader';
 import type { SettingItem } from '../types';
@@ -64,6 +66,288 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
         }`}
       />
     </button>
+  );
+}
+
+// ---- Market Tab ----
+function MarketTab({
+  localSettings,
+  setLocalSettings,
+  saveMutation,
+}: {
+  localSettings: Record<string, unknown>;
+  setLocalSettings: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  saveMutation: ReturnType<typeof useMutation<unknown, Error, Record<string, unknown>>>;
+}) {
+  const queryClient = useQueryClient();
+  const [connectMethod, setConnectMethod] = useState<'login' | 'api_key'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [connectError, setConnectError] = useState('');
+
+  const { data: status, isLoading: statusLoading } = useQuery<MarketStatus>({
+    queryKey: ['market-status'],
+    queryFn: getMarketStatus,
+    staleTime: 60_000,
+  });
+
+  const connectMut = useMutation({
+    mutationFn: () => {
+      if (connectMethod === 'login') {
+        return marketConnect('login', { email, password });
+      }
+      return marketConnect('api_key', { api_key: apiKey });
+    },
+    onSuccess: () => {
+      setConnectError('');
+      setEmail('');
+      setPassword('');
+      setApiKey('');
+      queryClient.invalidateQueries({ queryKey: ['market-status'] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        || (err as Error)?.message || 'Connection failed';
+      setConnectError(msg);
+    },
+  });
+
+  const disconnectMut = useMutation({
+    mutationFn: marketDisconnect,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['market-status'] });
+    },
+  });
+
+  const isConnected = status?.connected ?? false;
+  const account = status?.account;
+
+  return (
+    <div className="space-y-6">
+      {/* Market URL */}
+      <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#2f2f2f]">
+          <h3 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">ACP Market</h3>
+          <p className="text-xs text-[#6a6a6a] mt-1">Configure connection to the ACP Plugin Market</p>
+        </div>
+        <div className="p-5">
+          <SettingCard label="Market URL" description="ACP Market API base URL. Change this if you run a self-hosted Market instance.">
+            <input
+              type="url"
+              value={String(localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1')}
+              onChange={(e) => setLocalSettings((s) => ({ ...s, acp_market_url: e.target.value }))}
+              placeholder="https://acpmarket.novahelix.org/api/v1"
+              className="w-full md:w-96 h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white font-mono placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+            />
+          </SettingCard>
+          <div className="flex justify-end pt-3">
+            <button
+              onClick={() => saveMutation.mutate({
+                acp_market_url: localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1',
+              })}
+              disabled={saveMutation.isPending}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+            >
+              {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Save URL
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Connection Status */}
+      <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#2f2f2f]">
+          <h3 className="text-sm font-semibold text-white font-['Space_Grotesk']">Connection Status</h3>
+        </div>
+        <div className="p-5">
+          {statusLoading ? (
+            <div className="flex items-center gap-2 text-[#6a6a6a] text-sm">
+              <Loader2 size={14} className="animate-spin" />
+              Checking connection...
+            </div>
+          ) : isConnected ? (
+            <div className="space-y-4">
+              {/* Connected badge */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#059669]" />
+                  <span className="text-sm font-medium text-white">Connected</span>
+                </div>
+                <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#00D9FF]/10 text-[#00D9FF]">
+                  {status?.auth_type === 'env' ? 'ENV VAR' : status?.auth_type === 'api_key' ? 'API KEY' : 'LOGIN'}
+                </span>
+              </div>
+
+              {/* Env var notice */}
+              {status?.source === 'environment_variable' && (
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-[#FF8800]/5 border border-[#FF8800]/20 rounded-lg">
+                  <Info size={14} className="text-[#FF8800] mt-0.5 flex-shrink-0" />
+                  <p className="text-[11px] text-[#FF8800]">
+                    Connected via <span className="font-['JetBrains_Mono']">ACP_MARKET_API_KEY</span> environment variable. Cannot disconnect from UI.
+                  </p>
+                </div>
+              )}
+
+              {/* Account info */}
+              {account && (
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-2">
+                  {account.username && (
+                    <div>
+                      <p className="text-[11px] text-[#6a6a6a] mb-0.5">Username</p>
+                      <p className="text-sm text-white font-['JetBrains_Mono']">{account.username}</p>
+                    </div>
+                  )}
+                  {account.role && (
+                    <div>
+                      <p className="text-[11px] text-[#6a6a6a] mb-0.5">Role</p>
+                      <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#8B5CF6]/10 text-[#8B5CF6]">
+                        {account.role.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  {account.email && (
+                    <div>
+                      <p className="text-[11px] text-[#6a6a6a] mb-0.5">Email</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm text-white font-['JetBrains_Mono']">{account.email}</p>
+                        {account.is_verified && <CheckCircle2 size={12} className="text-[#059669]" />}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[11px] text-[#6a6a6a] mb-0.5">Status</p>
+                    <span className={`text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded ${
+                      account.is_active !== false
+                        ? 'bg-[#059669]/10 text-[#059669]'
+                        : 'bg-[#FF4444]/10 text-[#FF4444]'
+                    }`}>
+                      {account.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {!account && (
+                <p className="text-xs text-[#6a6a6a]">Connected but unable to fetch account details.</p>
+              )}
+
+              {/* Disconnect button */}
+              {status?.source !== 'environment_variable' && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => disconnectMut.mutate()}
+                    disabled={disconnectMut.isPending}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-[#FF4444]/30 text-[#FF4444] text-sm font-medium rounded-lg hover:bg-[#FF4444]/5 disabled:opacity-50 transition-colors"
+                  >
+                    {disconnectMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Unplug size={14} />}
+                    Disconnect
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Not connected — show login/API key form */
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#6a6a6a]" />
+                <span className="text-sm text-[#8a8a8a]">Not connected</span>
+              </div>
+
+              {/* Method selector */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setConnectMethod('login'); setConnectError(''); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    connectMethod === 'login'
+                      ? 'bg-[#00D9FF]/10 text-[#00D9FF] border border-[#00D9FF]/30'
+                      : 'bg-[#141414] text-[#8a8a8a] border border-[#2f2f2f] hover:text-white'
+                  }`}
+                >
+                  <LogIn size={14} />
+                  Login with Market account
+                </button>
+                <button
+                  onClick={() => { setConnectMethod('api_key'); setConnectError(''); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    connectMethod === 'api_key'
+                      ? 'bg-[#00D9FF]/10 text-[#00D9FF] border border-[#00D9FF]/30'
+                      : 'bg-[#141414] text-[#8a8a8a] border border-[#2f2f2f] hover:text-white'
+                  }`}
+                >
+                  <Key size={14} />
+                  Paste API Key
+                </button>
+              </div>
+
+              {/* Login form */}
+              {connectMethod === 'login' && (
+                <div className="space-y-3 max-w-md">
+                  <div>
+                    <label className="block text-[11px] text-[#6a6a6a] mb-1.5">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-[#6a6a6a] mb-1.5">Password</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="w-full h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    />
+                  </div>
+                  <button
+                    onClick={() => connectMut.mutate()}
+                    disabled={connectMut.isPending || !email || !password}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+                  >
+                    {connectMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
+                    Login
+                  </button>
+                </div>
+              )}
+
+              {/* API key form */}
+              {connectMethod === 'api_key' && (
+                <div className="space-y-3 max-w-md">
+                  <div>
+                    <label className="block text-[11px] text-[#6a6a6a] mb-1.5">API Key (JWT token)</label>
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Paste your Market API key or JWT token"
+                      className="w-full h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    />
+                  </div>
+                  <button
+                    onClick={() => connectMut.mutate()}
+                    disabled={connectMut.isPending || !apiKey}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+                  >
+                    {connectMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+                    Connect
+                  </button>
+                </div>
+              )}
+
+              {/* Error message */}
+              {connectError && (
+                <p className="text-xs text-[#FF4444]">{connectError}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -377,49 +661,7 @@ export default function Settings() {
             )}
 
             {/* Market tab */}
-            {activeTab === 'market' && (
-              <div className="space-y-6">
-                <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
-                  <div className="px-5 py-4 border-b border-[#2f2f2f]">
-                    <h3 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">ACP Market</h3>
-                    <p className="text-xs text-[#6a6a6a] mt-1">Configure connection to the ACP Plugin Market</p>
-                  </div>
-                  <div className="p-5 space-y-4">
-                    <SettingCard label="Market URL" description="ACP Market API base URL. Change this if you run a self-hosted Market instance.">
-                      <input
-                        type="url"
-                        value={String(localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1')}
-                        onChange={(e) => setLocalSettings((s) => ({ ...s, acp_market_url: e.target.value }))}
-                        placeholder="https://acpmarket.novahelix.org/api/v1"
-                        className="w-full md:w-96 h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white font-mono placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
-                      />
-                    </SettingCard>
-                    <SettingCard label="Market Public Key" description="Ed25519 public key for verifying plugin bundle signatures. Leave empty to skip verification (not recommended for production).">
-                      <textarea
-                        value={String(localSettings['acp_market_public_key'] ?? '')}
-                        onChange={(e) => setLocalSettings((s) => ({ ...s, acp_market_public_key: e.target.value }))}
-                        placeholder="-----BEGIN PUBLIC KEY-----\n..."
-                        rows={3}
-                        className="w-full md:w-96 px-3 py-2 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white font-mono placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors resize-none"
-                      />
-                    </SettingCard>
-                    <div className="flex justify-end pt-2">
-                      <button
-                        onClick={() => saveMutation.mutate({
-                          acp_market_url: localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1',
-                          acp_market_public_key: localSettings['acp_market_public_key'] ?? '',
-                        })}
-                        disabled={saveMutation.isPending}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
-                      >
-                        {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                        Save Market Settings
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {activeTab === 'market' && <MarketTab localSettings={localSettings} setLocalSettings={setLocalSettings} saveMutation={saveMutation} />}
 
             {/* Permissions tab */}
             {activeTab === 'permissions' && (

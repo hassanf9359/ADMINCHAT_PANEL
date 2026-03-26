@@ -60,15 +60,38 @@ def _plugin_to_info(plugin: InstalledPlugin) -> PluginInfo:
     )
 
 
+async def _get_download_auth_headers() -> dict[str, str]:
+    """Get Market auth headers for downloading plugin bundles."""
+    from app.database import async_session_factory
+    from app.api.v1.market_proxy import _get_market_auth_headers
+
+    async with async_session_factory() as session:
+        return await _get_market_auth_headers(session)
+
+
 async def _download_zip(url: str) -> Path:
-    """Download a plugin zip from a market URL to a temp file."""
+    """Download a plugin zip from a market URL to a temp file.
+
+    Also captures the X-Bundle-Signature header and writes a .sig file
+    alongside the zip for signature verification.
+    """
     tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
     try:
+        headers = await _get_download_auth_headers()
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.get(url)
+            resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             tmp.write(resp.content)
             tmp.flush()
+
+        # Write signature file if Market provided one
+        sig_b64 = resp.headers.get("X-Bundle-Signature")
+        if sig_b64:
+            import base64
+            sig_path = Path(tmp.name).with_suffix(".sig")
+            sig_path.write_bytes(base64.b64decode(sig_b64))
+            logger.info("Bundle signature saved to %s", sig_path)
+
     except httpx.HTTPError as exc:
         Path(tmp.name).unlink(missing_ok=True)
         raise HTTPException(
@@ -169,6 +192,10 @@ async def install_plugin(
     finally:
         if zip_path and zip_path.exists():
             zip_path.unlink(missing_ok=True)
+            # Also clean up the signature file if it exists
+            sig_path = zip_path.with_suffix(".sig")
+            if sig_path.exists():
+                sig_path.unlink(missing_ok=True)
 
 
 @router.post("/{plugin_id}/action", response_model=APIResponse)
@@ -235,6 +262,9 @@ async def update_plugin(
     finally:
         if zip_path and zip_path.exists():
             zip_path.unlink(missing_ok=True)
+            sig_path = zip_path.with_suffix(".sig")
+            if sig_path.exists():
+                sig_path.unlink(missing_ok=True)
 
 
 @router.patch("/{plugin_id}/config", response_model=APIResponse)

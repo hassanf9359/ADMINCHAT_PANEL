@@ -72,3 +72,43 @@ export async function checkPluginUpdates(): Promise<Array<{
   const { data } = await api.post('/plugins/market/check-updates');
   return data.data?.updates || [];
 }
+
+// ---- Market connection management ----
+
+export interface MarketAccount {
+  username?: string;
+  email?: string;
+  role?: string;
+  is_verified?: boolean;
+  is_active?: boolean;
+  display_name?: string;
+}
+
+export interface MarketStatus {
+  connected: boolean;
+  auth_type?: 'jwt' | 'api_key' | 'env' | 'unknown';
+  source?: 'environment_variable' | 'stored';
+  connected_at?: string;
+  account?: MarketAccount | null;
+  error?: string;
+}
+
+export async function getMarketStatus(): Promise<MarketStatus> {
+  const { data } = await api.get('/plugins/market/status');
+  return data.data;
+}
+
+export async function marketConnect(
+  method: 'login' | 'api_key',
+  credentials: { email?: string; password?: string; api_key?: string },
+): Promise<{ connected: boolean; auth_type: string }> {
+  const { data } = await api.post('/plugins/market/connect', {
+    method,
+    ...credentials,
+  });
+  return data.data;
+}
+
+export async function marketDisconnect(): Promise<void> {
+  await api.post('/plugins/market/disconnect');
+}

@@ -5,6 +5,24 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-03-27
+
+### Added
+- **Market JWT authentication** — Panel now authenticates to Market using JWT Bearer tokens (email+password login or API key paste) instead of the non-functional `X-ACP-API-Key` header
+- **Market connection management** — New connect/status/disconnect endpoints (`POST /plugins/market/connect`, `GET /plugins/market/status`, `POST /plugins/market/disconnect`) with encrypted credential storage via Fernet
+- **Market account status UI** — Settings > Market tab shows connection state, account info (username, role, email, verified status), auth type badge (ENV VAR / API KEY / LOGIN), and disconnect button
+- **Ed25519 bundle signature verification** — Panel auto-fetches Market's Ed25519 public key via `GET /signing/public-key`, caches in system_settings, and verifies plugin bundle signatures on download (`X-Bundle-Signature` header)
+- **Dual auth source support** — Market credentials can come from `ACP_MARKET_API_KEY` environment variable (priority) or UI-stored JWT tokens; env var connections cannot be disconnected from UI
+
+### Changed
+- **Market auth header fix** — All Market API calls now use `Authorization: Bearer <jwt>` instead of the incorrect `X-ACP-API-Key` header that Market never accepted
+- **Market tab redesigned** — Removed manual Public Key field; replaced with login form (email/password) and API key paste options with connection status card
+- **Plugin download auth** — Bundle downloads from Market now include Bearer auth headers, fixing paid plugin downloads that previously failed silently
+- **Signature verifier hardened** — Malformed PEM in `ACP_MARKET_PUBLIC_KEY` env var now raises `PluginSignatureError` at startup instead of silently disabling verification
+- **Market proxy error handling** — `_market_request()` now catches httpx errors and returns proper 502 responses instead of leaking raw 500 tracebacks
+
+[1.0.3]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.2...v1.0.3
+
 ## [1.0.2] - 2026-03-27
 
 ### Fixed

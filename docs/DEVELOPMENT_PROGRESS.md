@@ -290,3 +290,7 @@
 | 2026-03-23 | Phase 25 完成: AI Usage Tracking & Cost Estimation (v0.8.1) |
 | 2026-03-23 | Phase 25.5 完成: Keyword Filter Tab Refactor (v0.8.2) |
 | 2026-03-24 | Phase 26 完成: TMDB Movie Request System (v0.9.0) |
+| 2026-03-24 | Phase 27 完成: Plugin System + ACP Market (v1.0.0) |
+| 2026-03-27 | Phase 28 完成: OAuth Providers Overhaul (v1.0.1) |
+| 2026-03-27 | Phase 29 完成: Market Page Crash Fix + Settings Tab (v1.0.2) |
+| 2026-03-27 | Phase 30 完成: Market JWT Auth + Ed25519 Signature Verification (v1.0.3) |
