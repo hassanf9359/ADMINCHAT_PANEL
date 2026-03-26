@@ -37,7 +37,7 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
   const [name, setName] = useState('');
   const [baseUrl, setBaseUrl] = useState(defaults.base_url);
   const [model, setModel] = useState(defaults.model);
-  const [apiFormat, setApiFormat] = useState(defaults.api_format);
+  const [apiFormat] = useState(defaults.api_format);
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(500);
 
