@@ -240,6 +240,8 @@ export default function AISettings() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const editAuthMethod = editingConfig?.auth_method || '';
+    const noTemp = editAuthMethod === 'claude_oauth' || editAuthMethod === 'claude_session';
     const body = {
       name: formName.trim(),
       provider: formProvider,
@@ -247,7 +249,7 @@ export default function AISettings() {
       base_url: formBaseUrl.trim(),
       model: formModel.trim() || undefined,
       default_params: {
-        temperature: formTemperature,
+        ...(noTemp ? {} : { temperature: formTemperature }),
         max_tokens: formMaxTokens,
       },
     };
@@ -354,10 +356,12 @@ export default function AISettings() {
                               <span className="text-[#6a6a6a]">API Key:</span>{' '}
                               <span className="text-[#8a8a8a] font-mono">{config.api_key_masked}</span>
                             </div>
-                            <div>
-                              <span className="text-[#6a6a6a]">Temperature:</span>{' '}
-                              <span className="text-[#00D9FF] font-mono">{config.default_params?.temperature ?? 0.7}</span>
-                            </div>
+                            {config.auth_method !== 'claude_oauth' && config.auth_method !== 'claude_session' && (
+                              <div>
+                                <span className="text-[#6a6a6a]">Temperature:</span>{' '}
+                                <span className="text-[#00D9FF] font-mono">{config.default_params?.temperature ?? 0.7}</span>
+                              </div>
+                            )}
                             <div>
                               <span className="text-[#6a6a6a]">Max Tokens:</span>{' '}
                               <span className="text-[#00D9FF] font-mono">{config.default_params?.max_tokens ?? 500}</span>
@@ -874,11 +878,27 @@ export default function AISettings() {
                       <label className="block text-xs text-[#8a8a8a] mb-2">Provider</label>
                       <select
                         value={formProvider}
-                        onChange={(e) => setFormProvider(e.target.value)}
+                        onChange={(e) => {
+                          const p = e.target.value;
+                          setFormProvider(p);
+                          if (!editingConfig) {
+                            const defaults: Record<string, { model: string; base_url: string; api_format: string }> = {
+                              openai: { model: 'gpt-4o', base_url: 'https://api.openai.com/v1', api_format: 'openai_chat' },
+                              anthropic: { model: 'claude-sonnet-4-20250514', base_url: 'https://api.anthropic.com/v1', api_format: 'openai_chat' },
+                              google: { model: 'gemini-2.0-flash', base_url: 'https://generativelanguage.googleapis.com/v1beta', api_format: 'openai_chat' },
+                              custom: { model: '', base_url: '', api_format: 'openai_chat' },
+                            };
+                            const d = defaults[p] || defaults.custom;
+                            setFormModel(d.model);
+                            setFormBaseUrl(d.base_url);
+                            setFormApiFormat(d.api_format);
+                          }
+                        }}
                         className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] focus:outline-none focus:border-[#00D9FF] transition-colors"
                       >
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Anthropic</option>
+                        <option value="google">Google (Gemini)</option>
                         <option value="custom">Custom (OpenAI-compatible)</option>
                       </select>
                     </div>
@@ -928,50 +948,62 @@ export default function AISettings() {
                         type="text"
                         value={formModel}
                         onChange={(e) => setFormModel(e.target.value)}
-                        placeholder="gpt-3.5-turbo"
+                        placeholder={
+                          formProvider === 'anthropic' ? 'claude-sonnet-4-20250514' :
+                          formProvider === 'google' ? 'gemini-2.0-flash' :
+                          'gpt-4o'
+                        }
                         className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] placeholder:text-[#4a4a4a] font-mono focus:outline-none focus:border-[#00D9FF] transition-colors"
                       />
                     </div>
 
                     {/* Sliders */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs text-[#8a8a8a] mb-2">
-                          Temperature: <span className="text-[#00D9FF] font-mono">{formTemperature.toFixed(2)}</span>
-                        </label>
-                        <input
-                          type="range"
-                          min={0}
-                          max={2}
-                          step={0.05}
-                          value={formTemperature}
-                          onChange={(e) => setFormTemperature(Number(e.target.value))}
-                          className="w-full accent-accent"
-                        />
-                        <div className="flex justify-between text-[10px] text-[#6a6a6a] mt-0.5">
-                          <span>Precise</span>
-                          <span>Creative</span>
+                    {(() => {
+                      const editAuthMethod = editingConfig?.auth_method || '';
+                      const showTemp = editAuthMethod !== 'claude_oauth' && editAuthMethod !== 'claude_session';
+                      return (
+                        <div className={`grid ${showTemp ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                          {showTemp && (
+                            <div>
+                              <label className="block text-xs text-[#8a8a8a] mb-2">
+                                Temperature: <span className="text-[#00D9FF] font-mono">{formTemperature.toFixed(2)}</span>
+                              </label>
+                              <input
+                                type="range"
+                                min={0}
+                                max={2}
+                                step={0.05}
+                                value={formTemperature}
+                                onChange={(e) => setFormTemperature(Number(e.target.value))}
+                                className="w-full accent-accent"
+                              />
+                              <div className="flex justify-between text-[10px] text-[#6a6a6a] mt-0.5">
+                                <span>Precise</span>
+                                <span>Creative</span>
+                              </div>
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-xs text-[#8a8a8a] mb-2">
+                              Max Tokens: <span className="text-[#00D9FF] font-mono">{formMaxTokens}</span>
+                            </label>
+                            <input
+                              type="range"
+                              min={50}
+                              max={4000}
+                              step={50}
+                              value={formMaxTokens}
+                              onChange={(e) => setFormMaxTokens(Number(e.target.value))}
+                              className="w-full accent-accent"
+                            />
+                            <div className="flex justify-between text-[10px] text-[#6a6a6a] mt-0.5">
+                              <span>50</span>
+                              <span>4000</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs text-[#8a8a8a] mb-2">
-                          Max Tokens: <span className="text-[#00D9FF] font-mono">{formMaxTokens}</span>
-                        </label>
-                        <input
-                          type="range"
-                          min={50}
-                          max={4000}
-                          step={50}
-                          value={formMaxTokens}
-                          onChange={(e) => setFormMaxTokens(Number(e.target.value))}
-                          className="w-full accent-accent"
-                        />
-                        <div className="flex justify-between text-[10px] text-[#6a6a6a] mt-0.5">
-                          <span>50</span>
-                          <span>4000</span>
-                        </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     <div className="flex justify-end gap-3 mt-2">
                       <button

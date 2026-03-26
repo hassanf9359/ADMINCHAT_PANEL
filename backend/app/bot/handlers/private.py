@@ -274,6 +274,7 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                                                     max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
                                                     temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
                                                     api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
+                                                    auth_method=getattr(ai_cfg, "auth_method", "") or "",
                                                 )
                                                 ai_resp = await handler.reply_ai_classify_and_answer(
                                                     text_content, rag_context, runtime
@@ -316,6 +317,7 @@ async def handle_private_message(message: TgMessage, bot_db_id: int) -> None:
                                             max_tokens=ai_cfg.default_params.get("max_tokens", 500) if ai_cfg.default_params else 500,
                                             temperature=ai_cfg.default_params.get("temperature", 0.7) if ai_cfg.default_params else 0.7,
                                             api_format=getattr(ai_cfg, "api_format", "openai_chat") or "openai_chat",
+                                            auth_method=getattr(ai_cfg, "auth_method", "") or "",
                                         )
 
                                         if faq_result.reply_mode == "ai_polish":

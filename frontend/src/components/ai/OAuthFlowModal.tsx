@@ -5,8 +5,8 @@ import { getOAuthAuthUrl, exchangeOAuthCode, exchangeClaudeSessionToken } from '
 
 const PROVIDER_DEFAULTS: Record<string, { provider: string; base_url: string; model: string; api_format: string }> = {
   openai_oauth: { provider: 'openai', base_url: 'https://api.openai.com/v1', model: 'gpt-4o', api_format: 'openai_chat' },
-  claude_oauth: { provider: 'anthropic', base_url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', api_format: 'openai_chat' },
-  claude_session: { provider: 'anthropic', base_url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', api_format: 'openai_chat' },
+  claude_oauth: { provider: 'anthropic', base_url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', api_format: 'anthropic_responses' },
+  claude_session: { provider: 'anthropic', base_url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', api_format: 'anthropic_responses' },
   gemini_oauth: { provider: 'custom', base_url: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash', api_format: 'openai_chat' },
 };
 
@@ -60,6 +60,8 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
   }, []);
 
   const isCodePasteFlow = authMethod === 'openai_oauth' || authMethod === 'claude_oauth' || authMethod === 'gemini_oauth';
+  // Claude OAuth/Session proxy doesn't accept temperature
+  const supportsTemperature = authMethod !== 'claude_oauth' && authMethod !== 'claude_session';
 
   const configMeta = {
     name: name.trim(),
@@ -67,7 +69,10 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
     base_url: baseUrl.trim(),
     model: model.trim() || undefined,
     api_format: apiFormat,
-    default_params: { temperature, max_tokens: maxTokens },
+    default_params: {
+      ...(supportsTemperature ? { temperature } : {}),
+      max_tokens: maxTokens,
+    },
   };
 
   // Step 1: Get auth URL
@@ -114,7 +119,7 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
         base_url: baseUrl.trim(),
         model: model.trim() || undefined,
         api_format: apiFormat,
-        default_params: { temperature, max_tokens: maxTokens },
+        default_params: { max_tokens: maxTokens },
       });
       setSuccess(true);
       timeoutRef.current = setTimeout(() => onSuccess(), 500);
@@ -188,24 +193,21 @@ export default function OAuthFlowModal({ authMethod, onClose, onSuccess }: OAuth
 
             <div>
               <label className="block text-xs text-[#8a8a8a] mb-2">API Format</label>
-              <select
-                value={apiFormat}
-                onChange={(e) => setApiFormat(e.target.value)}
-                className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#FFFFFF] focus:outline-none focus:border-[#00D9FF] transition-colors"
-              >
-                <option value="openai_chat">OpenAI Chat Completions</option>
-                <option value="anthropic_responses">Anthropic Responses (CRS)</option>
-              </select>
+              <div className="w-full h-11 px-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-[#8a8a8a] flex items-center font-mono">
+                {apiFormat === 'anthropic_responses' ? 'Anthropic Responses (CRS)' : 'OpenAI Chat Completions'}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-[#8a8a8a] mb-2">
-                  Temperature: <span className="text-[#00D9FF] font-mono">{temperature.toFixed(2)}</span>
-                </label>
-                <input type="range" min={0} max={2} step={0.05} value={temperature}
-                  onChange={(e) => setTemperature(Number(e.target.value))} className="w-full accent-accent" />
-              </div>
+            <div className={`grid ${supportsTemperature ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+              {supportsTemperature && (
+                <div>
+                  <label className="block text-xs text-[#8a8a8a] mb-2">
+                    Temperature: <span className="text-[#00D9FF] font-mono">{temperature.toFixed(2)}</span>
+                  </label>
+                  <input type="range" min={0} max={2} step={0.05} value={temperature}
+                    onChange={(e) => setTemperature(Number(e.target.value))} className="w-full accent-accent" />
+                </div>
+              )}
               <div>
                 <label className="block text-xs text-[#8a8a8a] mb-2">
                   Max Tokens: <span className="text-[#00D9FF] font-mono">{maxTokens}</span>

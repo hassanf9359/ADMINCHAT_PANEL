@@ -40,6 +40,7 @@ class AIConfig:
     system_prompt: str = ""
     timeout: float = 30.0
     api_format: str = "openai_chat"  # 'openai_chat' or 'anthropic_responses'
+    auth_method: str = ""  # 'claude_oauth', 'openai_oauth', 'api_key', etc.
 
 
 class AIHandler:
@@ -123,6 +124,9 @@ class AIHandler:
             }
             if config.max_tokens:
                 payload["max_output_tokens"] = config.max_tokens
+            # Claude OAuth proxy doesn't accept temperature; only pass it for direct API
+            if config.temperature is not None and config.auth_method != "claude_oauth":
+                payload["temperature"] = config.temperature
         else:
             # Standard OpenAI Chat Completions format
             payload = {

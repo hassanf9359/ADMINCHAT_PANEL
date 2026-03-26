@@ -136,6 +136,22 @@ def _validate_state_data(state_data: dict) -> tuple[str, dict, dict]:
     return auth_method, config_meta, {"code_verifier": code_verifier}
 
 
+# Auth methods where temperature is NOT supported (Claude OAuth proxy strips it)
+_NO_TEMPERATURE_METHODS = {"claude_oauth", "claude_session"}
+
+
+def _build_default_params(auth_method: str, config_meta: dict) -> dict:
+    """Build default_params, omitting temperature for methods that don't support it."""
+    params = dict(config_meta.get("default_params", {}))
+    if auth_method in _NO_TEMPERATURE_METHODS:
+        params.pop("temperature", None)
+    if "max_tokens" not in params:
+        params["max_tokens"] = 500
+    if "temperature" not in params and auth_method not in _NO_TEMPERATURE_METHODS:
+        params["temperature"] = 0.7
+    return params
+
+
 async def _create_config_from_oauth(
     db: AsyncSession,
     tokens: OAuthTokens,
@@ -152,7 +168,7 @@ async def _create_config_from_oauth(
         api_key=tokens.access_token,
         model=config_meta.get("model"),
         api_format=config_meta.get("api_format", "openai_chat"),
-        default_params=config_meta.get("default_params", {"temperature": 0.7, "max_tokens": 500}),
+        default_params=_build_default_params(auth_method, config_meta),
         is_active=True,
         auth_method=auth_method,
         oauth_data=_tokens_to_oauth_data(tokens),

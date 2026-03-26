@@ -13,6 +13,7 @@ import secrets
 import time
 import base64
 import logging
+from urllib.parse import quote
 
 import httpx
 
@@ -25,6 +26,26 @@ AUTH_URL = "https://auth.openai.com/oauth/authorize"
 TOKEN_URL = "https://auth.openai.com/oauth/token"
 REDIRECT_URI = "http://localhost:1455/auth/callback"
 SCOPES = "openid profile email offline_access"
+# Refresh scope — no offline_access (aligned with Codex CLI / CRS behavior)
+REFRESH_SCOPES = "openid profile email"
+
+TOKEN_HEADERS = {
+    "User-Agent": "codex-cli/0.91.0",
+}
+
+
+def _pkce_pair() -> tuple[str, str]:
+    """Generate PKCE code_verifier and code_challenge (S256).
+
+    OpenAI / Codex CLI uses hex-encoded verifier.
+    """
+    verifier = secrets.token_bytes(64).hex()
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+        .rstrip(b"=")
+        .decode()
+    )
+    return verifier, challenge
 
 
 class OpenAIOAuth(OAuthProvider):
@@ -32,25 +53,22 @@ class OpenAIOAuth(OAuthProvider):
 
     def generate_auth_url(self, redirect_uri: str, state: str) -> tuple[str, dict]:
         # OpenAI Codex client only allows localhost redirect
-        code_verifier = secrets.token_urlsafe(64)
-        code_challenge = (
-            base64.urlsafe_b64encode(
-                hashlib.sha256(code_verifier.encode()).digest()
-            )
-            .rstrip(b"=")
-            .decode()
-        )
+        code_verifier, code_challenge = _pkce_pair()
 
         params = {
+            "response_type": "code",
             "client_id": CLIENT_ID,
             "redirect_uri": REDIRECT_URI,
-            "response_type": "code",
             "scope": SCOPES,
             "state": state,
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
+            "id_token_add_organizations": "true",
+            "codex_cli_simplified_flow": "true",
         }
-        qs = "&".join(f"{k}={httpx.URL('', params={k: v}).params[k]}" for k, v in params.items())
+        qs = "&".join(
+            f"{k}={httpx.URL('', params={k: v}).params[k]}" for k, v in params.items()
+        )
         auth_url = f"{AUTH_URL}?{qs}"
 
         pkce_params = {"code_verifier": code_verifier}
@@ -59,7 +77,7 @@ class OpenAIOAuth(OAuthProvider):
     async def exchange_code(
         self, code: str, redirect_uri: str, pkce_params: dict
     ) -> OAuthTokens:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=30, headers=TOKEN_HEADERS) as client:
             resp = await client.post(
                 TOKEN_URL,
                 data={
@@ -70,6 +88,12 @@ class OpenAIOAuth(OAuthProvider):
                     "code_verifier": pkce_params["code_verifier"],
                 },
             )
+            if resp.status_code != 200:
+                logger.error(
+                    "OpenAI token exchange failed: status=%d body=%s",
+                    resp.status_code,
+                    resp.text[:500],
+                )
             resp.raise_for_status()
             data = resp.json()
 
@@ -82,15 +106,22 @@ class OpenAIOAuth(OAuthProvider):
         )
 
     async def refresh_token(self, refresh_token: str) -> OAuthTokens:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=30, headers=TOKEN_HEADERS) as client:
             resp = await client.post(
                 TOKEN_URL,
                 data={
                     "grant_type": "refresh_token",
                     "client_id": CLIENT_ID,
                     "refresh_token": refresh_token,
+                    "scope": REFRESH_SCOPES,
                 },
             )
+            if resp.status_code != 200:
+                logger.error(
+                    "OpenAI token refresh failed: status=%d body=%s",
+                    resp.status_code,
+                    resp.text[:500],
+                )
             resp.raise_for_status()
             data = resp.json()
 

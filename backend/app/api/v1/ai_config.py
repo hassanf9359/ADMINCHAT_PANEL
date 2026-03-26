@@ -213,6 +213,7 @@ async def test_ai_config(
         max_tokens=config.default_params.get("max_tokens", 100),
         temperature=config.default_params.get("temperature", 0.7),
         api_format=getattr(config, "api_format", "openai_chat") or "openai_chat",
+        auth_method=getattr(config, "auth_method", "") or "",
     )
 
     try:
