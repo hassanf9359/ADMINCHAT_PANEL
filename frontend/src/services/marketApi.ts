@@ -11,7 +11,9 @@ export interface MarketPlugin {
   color?: string;
   categories: string[];
   tags: string[];
-  author: { username: string; display_name: string; verified: boolean };
+  author?: { username: string; display_name: string; verified: boolean };
+  author_name?: string;
+  author_username?: string;
   pricing_model: 'free' | 'one_time' | 'subscription_monthly' | 'subscription_yearly';
   price_cents: number;
   currency: string;

@@ -115,7 +115,7 @@ function PluginCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-white truncate">{plugin.name}</h3>
-            {plugin.author.verified && (
+            {plugin.author?.verified && (
               <Check size={12} className="text-[#00D9FF] shrink-0" />
             )}
           </div>
@@ -137,7 +137,7 @@ function PluginCard({
             <Download size={11} />
             {formatDownloads(plugin.download_count)}
           </span>
-          <span>by {plugin.author.display_name || plugin.author.username}</span>
+          <span>by {plugin.author_name || plugin.author?.display_name || plugin.author?.username || 'Unknown'}</span>
         </div>
         <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono']">v{plugin.latest_version}</span>
       </div>
@@ -205,7 +205,7 @@ function PluginDetailModal({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-white font-['Space_Grotesk']">{plugin.name}</h2>
-              {plugin.author.verified && <Check size={14} className="text-[#00D9FF]" />}
+              {plugin.author?.verified && <Check size={14} className="text-[#00D9FF]" />}
               <span
                 className={`text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded ${
                   isFree ? 'bg-[#059669]/10 text-[#059669]' : 'bg-[#FF8800]/10 text-[#FF8800]'
@@ -217,7 +217,7 @@ function PluginDetailModal({
             <p className="text-xs text-[#8a8a8a] mt-1">{plugin.description}</p>
             <div className="flex items-center gap-4 mt-2 text-[11px] text-[#6a6a6a]">
               <span className="flex items-center gap-1"><Download size={11} /> {formatDownloads(plugin.download_count)}</span>
-              <span>by {plugin.author.display_name || plugin.author.username}</span>
+              <span>by {plugin.author_name || plugin.author?.display_name || plugin.author?.username || 'Unknown'}</span>
               <span className="font-['JetBrains_Mono']">v{plugin.latest_version}</span>
             </div>
           </div>

@@ -12,6 +12,7 @@ const TABS: { key: string; label: string }[] = [
   { key: 'admins', label: 'Admins' },
   { key: 'system', label: 'System' },
   { key: 'ai', label: 'AI Config' },
+  { key: 'market', label: 'Market' },
   { key: 'permissions', label: 'Permissions' },
 ];
 
@@ -372,6 +373,51 @@ export default function Settings() {
                     className="w-64 h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
                   />
                 </SettingCard>
+              </div>
+            )}
+
+            {/* Market tab */}
+            {activeTab === 'market' && (
+              <div className="space-y-6">
+                <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[#2f2f2f]">
+                    <h3 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">ACP Market</h3>
+                    <p className="text-xs text-[#6a6a6a] mt-1">Configure connection to the ACP Plugin Market</p>
+                  </div>
+                  <div className="p-5 space-y-4">
+                    <SettingCard label="Market URL" description="ACP Market API base URL. Change this if you run a self-hosted Market instance.">
+                      <input
+                        type="url"
+                        value={String(localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1')}
+                        onChange={(e) => setLocalSettings((s) => ({ ...s, acp_market_url: e.target.value }))}
+                        placeholder="https://acpmarket.novahelix.org/api/v1"
+                        className="w-full md:w-96 h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white font-mono placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                      />
+                    </SettingCard>
+                    <SettingCard label="Market Public Key" description="Ed25519 public key for verifying plugin bundle signatures. Leave empty to skip verification (not recommended for production).">
+                      <textarea
+                        value={String(localSettings['acp_market_public_key'] ?? '')}
+                        onChange={(e) => setLocalSettings((s) => ({ ...s, acp_market_public_key: e.target.value }))}
+                        placeholder="-----BEGIN PUBLIC KEY-----\n..."
+                        rows={3}
+                        className="w-full md:w-96 px-3 py-2 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white font-mono placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors resize-none"
+                      />
+                    </SettingCard>
+                    <div className="flex justify-end pt-2">
+                      <button
+                        onClick={() => saveMutation.mutate({
+                          acp_market_url: localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1',
+                          acp_market_public_key: localSettings['acp_market_public_key'] ?? '',
+                        })}
+                        disabled={saveMutation.isPending}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+                      >
+                        {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        Save Market Settings
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

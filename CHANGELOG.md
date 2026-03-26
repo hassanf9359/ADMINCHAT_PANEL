@@ -5,6 +5,21 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-03-27
+
+### Fixed
+- **Market page crash** — `plugin.author.verified` TypeError when Market API returns no author object; added optional chaining on all `plugin.author` accesses
+- **Market author display** — Falls back to `author_name` flat field, then `author.display_name`, then 'Unknown'
+
+### Added
+- **Market tab in Settings** — Configure Market URL and public key from the Settings page (previously only via environment variables)
+
+### Changed
+- Plugin Market README sections updated: movie request content moved to ACP_PLUGINS repo
+- CHANGELOG entries added for v1.0.0 and v1.0.1
+
+[1.0.2]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.1...v1.0.2
+
 ## [1.0.1] - 2026-03-27
 
 ### Fixed
