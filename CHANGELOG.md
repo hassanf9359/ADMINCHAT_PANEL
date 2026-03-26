@@ -5,6 +5,46 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-03-27
+
+### Fixed
+- **Claude OAuth 400 error** — Removed deprecated `anthropic-beta` header, updated scopes to match Claude CLI (`org:create_api_key`, `user:sessions`, `user:mcp_servers`), added `code=true` param, handle `code#state` format in authorization codes
+- **Claude Session Token flow** — Fixed authorization from GET to POST `/v1/oauth/{org}/authorize`, proper JSON response parsing
+- **OpenAI OAuth** — PKCE verifier now uses hex encoding (matching Codex CLI), added `User-Agent: codex-cli/0.91.0`, `codex_cli_simplified_flow` param, refresh scope excludes `offline_access`
+- **CRS temperature** — Temperature was silently ignored in Anthropic Responses (CRS) format; now passed for direct API connections, skipped for Claude OAuth proxy (which strips it)
+
+### Changed
+- Claude OAuth/Session default `api_format` changed from `openai_chat` to `anthropic_responses`
+- OAuth modal: API format shown as read-only (auto-determined per auth method)
+- Temperature slider hidden for Claude OAuth/Session modes (proxy doesn't support it)
+- Provider switch in API Key form auto-fills default model, base URL, and API format
+- Added Google (Gemini) as provider option in API Key form
+- Model placeholder changes dynamically per selected provider
+- Plugin system section replaces movie request section in README (movie request moved to ACP_PLUGINS repo)
+
+[1.0.1]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.0...v1.0.1
+
+## [1.0.0] - 2026-03-24
+
+### Added
+- **Plugin System** — Sandboxed plugin runtime with manifest-driven capabilities (database, bot_handler, api_routes, frontend_pages, settings_tab)
+- Plugin lifecycle management: install, activate, deactivate, uninstall with cleanup
+- `CoreSDKBridge` providing scoped API access (users, bots, messages, groups, faq, settings)
+- `PluginSecretStore` with Fernet encryption for plugin secrets
+- `PluginConfigStore` with caching for plugin configuration
+- `PluginEventBus` pub/sub system for inter-plugin communication
+- Plugin Market integration for one-click install from [ACP Market](https://acpmarket.novahelix.org)
+- Database tables: `installed_plugins`, `plugin_secrets`
+- Alembic migration for plugin system tables
+- Frontend: Plugin management page with install/uninstall/activate UI
+- Code review: 11 critical+high security issues resolved
+
+### Changed
+- Database schema expanded from 30 to 34 tables
+- Movie request system extracted as plugin (see [ACP_PLUGINS](https://github.com/fxxkrlab/ACP_PLUGINS))
+
+[1.0.0]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v0.9.0...v1.0.0
+
 ## [0.9.0] - 2026-03-24
 
 ### Added

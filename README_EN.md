@@ -149,46 +149,11 @@ User message → FAQ match → Get template with {variable} placeholders → AI 
 
 </details>
 
-- **TMDB Movie/TV Request System** &mdash; Users submit TMDB URLs via Bot, automatic info fetch, poster card reply, deduplication, and admin management page with fulfill/reject actions
-- **Smart Request Triggers** &mdash; Private: `/req URL` or `req URL`; Group: `@bot req URL`; bare URLs and group `/req` are ignored (prevents duplicate triggers from bot pool)
-- **TMDB API Multi-Key Rotation** &mdash; Card-based key management with automatic rate-limit detection and failover
-- **Optional Media Library Check** &mdash; Connect an external PostgreSQL/MySQL database to check if titles are already in your media library; if not configured, all requests go to the admin panel
-
-<details>
-<summary><strong>Movie Request Trigger Rules & Flow (click to expand)</strong></summary>
-
-#### Trigger Rules
-
-| Context | Format | Triggered? | Reason |
-|---------|--------|-----------|--------|
-| Private | `/req https://themoviedb.org/movie/875828` | ✅ | Command trigger |
-| Private | `req https://themoviedb.org/tv/1396` | ✅ | Shorthand trigger |
-| Private | `https://themoviedb.org/movie/875828` | ❌ | Bare URL ignored |
-| Group | `@mybot req https://themoviedb.org/movie/875828` | ✅ | @mention + req |
-| Group | `/req https://themoviedb.org/movie/875828` | ❌ | Prevents duplicate bot triggers |
-| Group | `https://themoviedb.org/movie/875828` | ❌ | Bare URL ignored |
-
-#### Request Processing Flow
-
-```mermaid
-flowchart TD
-    A["User sends message"] --> B{"Contains TMDB URL?"}
-    B -->|"No"| C["Pass to other handlers"]
-    B -->|"Yes"| D{"Trigger rule check"}
-    D -->|"Not met"| C
-    D -->|"Met"| E{"DB dedup check\ntmdb_id + media_type"}
-    E -->|"Exists"| F["request_count++\nadd MovieRequestUser"]
-    E -->|"First time"| G["Call TMDB API for details"]
-    G --> H{"External media library\nconfigured?"}
-    H -->|"Yes"| I["Query external DB\ncheck if in library"]
-    H -->|"No"| J["in_library = false"]
-    I --> K["Store in movie_requests"]
-    J --> K
-    F --> L["Bot replies with poster card"]
-    K --> L
-```
-
-</details>
+### Plugin System
+- **ACP Plugin Architecture** &mdash; Sandboxed plugin runtime with 5 capability declarations: database, bot handler, API routes, frontend pages, settings tab
+- **ACP Market Integration** &mdash; Browse, install and manage third-party plugins via [ACP Market](https://acpmarket.novahelix.org) with one-click install/uninstall
+- **Plugin SDK + CLI** &mdash; [acp-plugin-sdk](https://github.com/fxxkrlab/acp-plugin-sdk) provides type hints + `acp-cli` CLI tool for init / validate / build / publish workflow
+- **Official Plugin Repository** &mdash; [ACP_PLUGINS](https://github.com/fxxkrlab/ACP_PLUGINS) open-source example plugins (e.g. TMDB Movie Request System)
 
 - **User Management** &mdash; Tags, groups, blocking, search, and full Telegram user profile display
 - **AI Integration** &mdash; OpenAI-compatible API format with multi-provider configuration
@@ -519,8 +484,10 @@ flowchart TB
 | `movie_requests` | Movie/TV requests from users | tmdb_id, media_type, status, request_count, in_library |
 | `movie_request_users` | Request-user junction | movie_request_id, tg_user_id (unique pair) |
 | `media_library_configs` | External media DB config | db_type, host, table_name, tmdb_id_column |
+| `installed_plugins` | Installed plugin registry | slug, version, status, capabilities (JSONB) |
+| `plugin_secrets` | Plugin encrypted secrets | plugin_slug, key, encrypted_value |
 
-> 34 tables total. See [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) for the full schema.
+> 36 tables total. See [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) for the full schema.
 
 ## FAQ Match Modes
 
@@ -630,7 +597,7 @@ ADMINCHAT_PANEL/
 │   │   │   ├── claude.py      # Claude OAuth + Session Token
 │   │   │   ├── gemini.py      # Gemini/Google OAuth + PKCE
 │   │   │   └── token_refresh.py # Automatic token refresh task
-│   │   ├── models/            # SQLAlchemy ORM (34 tables)
+│   │   ├── models/            # SQLAlchemy ORM (36 tables)
 │   │   ├── schemas/           # Pydantic request/response models
 │   │   ├── services/          # Business services (Redis/audit/media/Turnstile)
 │   │   ├── ws/                # WebSocket real-time communication
