@@ -23,12 +23,19 @@ function PageLoader() {
   );
 }
 
+const LOAD_TIMEOUT_MS = 10_000;
 const moduleCache = new Map<string, ComponentType>();
+const failedPlugins = new Set<string>();
 
 async function loadRemoteModule(pluginId: string, moduleName: string): Promise<ComponentType> {
   const cacheKey = `${pluginId}/${moduleName}`;
   if (moduleCache.has(cacheKey)) {
     return moduleCache.get(cacheKey)!;
+  }
+
+  // Don't retry plugins that already failed in this session
+  if (failedPlugins.has(pluginId)) {
+    throw new Error(`Plugin ${pluginId} failed to load previously`);
   }
 
   const remoteUrl = `/plugins/${pluginId}/remoteEntry.js`;
@@ -42,13 +49,35 @@ async function loadRemoteModule(pluginId: string, moduleName: string): Promise<C
     const script = document.createElement('script');
     script.src = remoteUrl;
     script.type = 'module';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load plugin: ${pluginId}`));
+
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Plugin ${pluginId} load timed out after ${LOAD_TIMEOUT_MS / 1000}s`));
+    }, LOAD_TIMEOUT_MS);
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      script.onload = null;
+      script.onerror = null;
+    };
+
+    script.onload = () => {
+      cleanup();
+      resolve();
+    };
+    script.onerror = () => {
+      cleanup();
+      // Remove the failed script tag from DOM to prevent accumulation
+      script.remove();
+      reject(new Error(`Failed to load plugin: ${pluginId}`));
+    };
+
     document.head.appendChild(script);
   });
 
   const pluginRegistry = window[`__acp_plugin_${pluginId}`];
   if (!pluginRegistry) {
+    failedPlugins.add(pluginId);
     throw new Error(`Plugin ${pluginId} did not register itself`);
   }
 
@@ -77,12 +106,19 @@ export function PluginLoader({
   useEffect(() => {
     let cancelled = false;
 
+    // Reset state when pluginId/moduleName changes
+    setComponent(null);
+    setError(null);
+
     loadRemoteModule(pluginId, moduleName)
       .then(comp => {
         if (!cancelled) setComponent(() => comp);
       })
       .catch(err => {
-        if (!cancelled) setError(err);
+        if (!cancelled) {
+          failedPlugins.add(pluginId);
+          setError(err);
+        }
       });
 
     return () => { cancelled = true; };
@@ -93,7 +129,17 @@ export function PluginLoader({
       <div className="flex items-center justify-center h-full">
         <div className="text-center p-8">
           <p className="text-[#FF4444] text-sm mb-2">Failed to load plugin</p>
-          <p className="text-[#6a6a6a] text-xs">{error.message}</p>
+          <p className="text-[#6a6a6a] text-xs mb-4">{error.message}</p>
+          <button
+            onClick={() => {
+              failedPlugins.delete(pluginId);
+              moduleCache.delete(`${pluginId}/${moduleName}`);
+              setError(null);
+            }}
+            className="text-xs text-[#00D9FF] hover:underline"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
