@@ -248,6 +248,21 @@ class PluginManager:
         # Give health monitor a reference for auto-disable
         self._health.set_plugin_manager(self)
 
+    def ensure_app(self, app: FastAPI) -> None:
+        """Ensure _app is the real FastAPI instance (not a module ref).
+
+        Called from route handlers with request.app to fix the reference
+        if it got corrupted during module imports.
+        """
+        from fastapi import FastAPI as _FastAPI
+        if not isinstance(self._app, _FastAPI):
+            logger.warning(
+                "PluginManager._app was %s, fixing to FastAPI instance",
+                type(self._app).__name__,
+            )
+            self._app = app
+            self._static_server._app = app
+
     async def _load_cached_public_key(self) -> None:
         """Load the Market public key from system_settings (if cached)."""
         if self._verifier.has_key:
@@ -514,12 +529,8 @@ class PluginManager:
                 "Migration failed for plugin %s", plugin_id
             )
 
-        # Resolve the FastAPI app (guard against _app becoming a module ref)
-        from fastapi import FastAPI as _FastAPI
+        # Use the verified FastAPI app reference
         _real_app = self._app
-        if not isinstance(_real_app, _FastAPI):
-            logger.warning("self._app is %s, resolving from app.main", type(_real_app).__name__)
-            from app.main import app as _real_app
 
         # 4. Mount API router
         if hasattr(module, "get_router"):

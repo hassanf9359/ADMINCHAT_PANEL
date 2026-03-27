@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -170,12 +170,15 @@ async def get_plugin(
 @router.post("/install", response_model=APIResponse)
 async def install_plugin(
     body: PluginInstallRequest,
+    request: Request,
     _admin: Annotated[Admin, Depends(require_super_admin)],
 ) -> APIResponse:
     """Install a plugin from Market (optionally downloading the bundle)."""
     from app.plugins.loader import get_plugin_manager
 
     pm = get_plugin_manager()
+    # Ensure PluginManager has the real FastAPI app reference
+    pm.ensure_app(request.app)
 
     zip_path: Path | None = None
     try:
@@ -228,12 +231,14 @@ async def install_plugin(
 async def plugin_action(
     plugin_id: str,
     body: PluginActionRequest,
+    request: Request,
     _admin: Annotated[Admin, Depends(require_super_admin)],
 ) -> APIResponse:
     """Perform a lifecycle action on a plugin."""
     from app.plugins.loader import get_plugin_manager
 
     pm = get_plugin_manager()
+    pm.ensure_app(request.app)
 
     try:
         if body.action == "activate":
