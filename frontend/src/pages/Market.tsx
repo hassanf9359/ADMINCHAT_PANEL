@@ -30,6 +30,16 @@ import {
 import { useInstalledPlugins, useInvalidatePlugins } from '../plugins/useInstalledPlugins';
 import type { InstalledPlugin } from '../plugins/types';
 import api from '../services/api';
+import { isAxiosError } from 'axios';
+
+/** Extract a human-readable error message from an axios error or generic Error. */
+function getErrorMessage(error: unknown, fallback = 'An error occurred'): string {
+  if (isAxiosError(error)) {
+    return error.response?.data?.detail || error.response?.data?.message || error.message;
+  }
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
 
 // ---- Constants ----
 const CATEGORIES = ['All', 'Media', 'Automation', 'Analytics', 'Communication', 'Security', 'Utilities'] as const;
@@ -587,7 +597,7 @@ function Notification({
   useEffect(() => {
     const timer = setTimeout(onDismiss, 4000);
     return () => clearTimeout(timer);
-  }, [onDismiss]);
+  }, [message, onDismiss]);
 
   return (
     <div
@@ -666,10 +676,9 @@ export default function Market() {
       setNotification({ type: 'success', message: 'Plugin installed and activated successfully' });
     },
     onError: (error: unknown) => {
-      const axiosDetail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setNotification({
         type: 'error',
-        message: axiosDetail || (error instanceof Error ? error.message : 'Failed to install plugin'),
+        message: getErrorMessage(error, 'Failed to install plugin'),
       });
     },
   });
@@ -700,6 +709,8 @@ export default function Market() {
       }
       invalidatePlugins();
       queryClient.invalidateQueries({ queryKey: ['market-updates'] });
+    } catch (error) {
+      setNotification({ type: 'error', message: getErrorMessage(error, `Failed to ${action} plugin`) });
     } finally {
       setActionLoading(null);
     }
@@ -715,8 +726,8 @@ export default function Market() {
       invalidatePlugins();
       queryClient.invalidateQueries({ queryKey: ['market-updates'] });
       setNotification({ type: 'success', message: `${uninstallTarget.name} uninstalled successfully` });
-    } catch {
-      setNotification({ type: 'error', message: `Failed to uninstall ${uninstallTarget.name}` });
+    } catch (error) {
+      setNotification({ type: 'error', message: getErrorMessage(error, `Failed to uninstall ${uninstallTarget.name}`) });
     } finally {
       setActionLoading(null);
     }
@@ -735,8 +746,8 @@ export default function Market() {
       await api.post(`/plugins/${pluginId}/action`, { action });
       invalidatePlugins();
       setNotification({ type: 'success', message: `Plugin ${action}d successfully` });
-    } catch {
-      setNotification({ type: 'error', message: `Failed to ${action} plugin` });
+    } catch (error) {
+      setNotification({ type: 'error', message: getErrorMessage(error, `Failed to ${action} plugin`) });
     } finally {
       setActionLoading(null);
     }

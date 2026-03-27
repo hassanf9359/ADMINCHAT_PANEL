@@ -52,6 +52,7 @@ async function loadRemoteModule(pluginId: string, moduleName: string): Promise<C
 
     const timeoutId = setTimeout(() => {
       cleanup();
+      script.remove();
       reject(new Error(`Plugin ${pluginId} load timed out after ${LOAD_TIMEOUT_MS / 1000}s`));
     }, LOAD_TIMEOUT_MS);
 

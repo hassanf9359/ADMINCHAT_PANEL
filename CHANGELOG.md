@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PluginLoader crash could block navigation** — Plugin frontend module load failure (404/timeout) could leave the page in a broken state; added 10s load timeout, failed script tag cleanup, retry tracking, and a manual Retry button
 - **"Update to v" empty version** — Plugin detail modal showed "Update to v" with no version number because the detail API doesn't return `latest_version`; now falls back to `versions[0].version`
 - **Hardcoded Market URL in frontend** — `installFromMarket()` hardcoded `acpmarket.novahelix.org` download URL; now backend constructs the URL from `settings.ACP_MARKET_URL`
+- **Misleading 502 on Market auth failure** — Backend returned generic 502 when Market download failed due to 401/403; now returns clear "Market authentication required" message with 401 status
+- **Plugin action errors silently swallowed** — `handlePluginAction` (activate/deactivate/update) had no catch block; failures now show error toast with backend detail message
+- **Notification timer not reset** — Rapid successive notifications could be dismissed early because useEffect timer wasn't reset on message change
+- **PluginLoader timeout leaked script tags** — Timeout path didn't remove the `<script>` element from DOM, causing potential stale module registrations
 
 ### Added
 - **Activate/Deactivate buttons in Browse tab** — Plugin cards now show Active/Inactive status badge with a toggle button to activate or deactivate plugins directly from the Browse tab and detail modal
