@@ -96,16 +96,22 @@ function PluginCard({
   plugin,
   isInstalled,
   installedVersion,
+  installedStatus,
   onInstall,
+  onToggleActive,
   onClick,
   installing,
+  toggling,
 }: {
   plugin: MarketPlugin;
   isInstalled: boolean;
   installedVersion?: string;
+  installedStatus?: InstalledPlugin['status'];
   onInstall: () => void;
+  onToggleActive?: () => void;
   onClick: () => void;
   installing: boolean;
+  toggling?: boolean;
 }) {
   const isFree = plugin.pricing_model === 'free';
   const latestVersion = plugin.latest_version;
@@ -150,9 +156,31 @@ function PluginCard({
 
       <div className="mt-3 pt-3 border-t border-[#1A1A1A]">
         {isInstalled && !hasUpdate ? (
-          <div className="flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-[#059669]/10 text-[#059669] text-xs font-medium">
-            <Check size={14} />
-            Installed
+          <div className="flex items-center gap-2">
+            <div className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium ${
+              installedStatus === 'active'
+                ? 'bg-[#059669]/10 text-[#059669]'
+                : installedStatus === 'error'
+                  ? 'bg-[#FF4444]/10 text-[#FF4444]'
+                  : 'bg-[#FF8800]/10 text-[#FF8800]'
+            }`}>
+              {installedStatus === 'active' ? <Power size={14} /> : installedStatus === 'error' ? <XCircle size={14} /> : <PowerOff size={14} />}
+              {installedStatus === 'active' ? 'Active' : installedStatus === 'error' ? 'Error' : 'Inactive'}
+            </div>
+            {onToggleActive && installedStatus !== 'error' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleActive(); }}
+                disabled={toggling}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-40 ${
+                  installedStatus === 'active'
+                    ? 'text-[#FF8800] hover:bg-[#FF8800]/10'
+                    : 'text-[#059669] hover:bg-[#059669]/10'
+                }`}
+                title={installedStatus === 'active' ? 'Deactivate' : 'Activate'}
+              >
+                {toggling ? <Loader2 size={14} className="animate-spin" /> : installedStatus === 'active' ? <PowerOff size={14} /> : <Power size={14} />}
+              </button>
+            )}
           </div>
         ) : hasUpdate ? (
           <button
@@ -183,18 +211,24 @@ function PluginDetailModal({
   plugin,
   isInstalled,
   installedVersion,
+  installedStatus,
   onClose,
   onInstall,
   onUninstall,
+  onToggleActive,
   installing,
+  toggling,
 }: {
   plugin: MarketPluginDetail | null;
   isInstalled: boolean;
   installedVersion?: string;
+  installedStatus?: InstalledPlugin['status'];
   onClose: () => void;
   onInstall: () => void;
   onUninstall?: () => void;
+  onToggleActive?: () => void;
   installing: boolean;
+  toggling?: boolean;
 }) {
   if (!plugin) return null;
 
@@ -305,10 +339,30 @@ function PluginDetailModal({
               Uninstall
             </button>
           )}
+          {isInstalled && onToggleActive && installedStatus !== 'error' && (
+            <button
+              onClick={onToggleActive}
+              disabled={toggling}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-40 ${
+                installedStatus === 'active'
+                  ? 'bg-[#FF8800]/10 text-[#FF8800] hover:bg-[#FF8800]/20'
+                  : 'bg-[#059669]/10 text-[#059669] hover:bg-[#059669]/20'
+              }`}
+            >
+              {toggling ? <Loader2 size={16} className="animate-spin" /> : installedStatus === 'active' ? <PowerOff size={16} /> : <Power size={16} />}
+              {installedStatus === 'active' ? 'Deactivate' : 'Activate'}
+            </button>
+          )}
           {isInstalled && !hasUpdate ? (
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#059669]/10 text-[#059669] text-sm font-medium">
-              <Check size={16} />
-              Installed
+            <div className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium ${
+              installedStatus === 'active'
+                ? 'bg-[#059669]/10 text-[#059669]'
+                : installedStatus === 'error'
+                  ? 'bg-[#FF4444]/10 text-[#FF4444]'
+                  : 'bg-[#FF8800]/10 text-[#FF8800]'
+            }`}>
+              {installedStatus === 'active' ? <Power size={16} /> : installedStatus === 'error' ? <XCircle size={16} /> : <PowerOff size={16} />}
+              {installedStatus === 'active' ? 'Active' : installedStatus === 'error' ? 'Error' : 'Inactive'}
             </div>
           ) : hasUpdate ? (
             <button
@@ -671,6 +725,22 @@ export default function Market() {
     navigate('/settings', { state: { pluginTab: pluginId } });
   };
 
+  const handleToggleActive = async (pluginId: string) => {
+    const plugin = installedMap.get(pluginId);
+    if (!plugin) return;
+    const action = plugin.status === 'active' ? 'deactivate' : 'activate';
+    setActionLoading(pluginId);
+    try {
+      await api.post(`/plugins/${pluginId}/action`, { action });
+      invalidatePlugins();
+      setNotification({ type: 'success', message: `Plugin ${action}d successfully` });
+    } catch {
+      setNotification({ type: 'error', message: `Failed to ${action} plugin` });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const marketPlugins = browseData?.items || [];
 
   return (
@@ -789,9 +859,12 @@ export default function Market() {
                       plugin={plugin}
                       isInstalled={!!installed}
                       installedVersion={installed?.version}
+                      installedStatus={installed?.status}
                       onInstall={() => handleInstall(plugin.plugin_id, plugin.latest_version)}
+                      onToggleActive={installed ? () => handleToggleActive(plugin.plugin_id) : undefined}
                       onClick={() => setSelectedPluginId(plugin.plugin_id)}
                       installing={installMutation.isPending && installMutation.variables?.pluginId === plugin.plugin_id}
+                      toggling={actionLoading === plugin.plugin_id}
                     />
                   );
                 })}
@@ -825,6 +898,7 @@ export default function Market() {
             plugin={detailLoading ? null : (pluginDetail || null)}
             isInstalled={installedMap.has(selectedPluginId)}
             installedVersion={installedMap.get(selectedPluginId)?.version}
+            installedStatus={installedMap.get(selectedPluginId)?.status}
             onClose={() => setSelectedPluginId(null)}
             onInstall={() => {
               const latestVersion = pluginDetail?.latest_version || pluginDetail?.versions?.[0]?.version || '';
@@ -837,7 +911,9 @@ export default function Market() {
                 setUninstallTarget(installed);
               }
             } : undefined}
+            onToggleActive={installedMap.has(selectedPluginId) ? () => handleToggleActive(selectedPluginId) : undefined}
             installing={installMutation.isPending}
+            toggling={actionLoading === selectedPluginId}
           />
         )}
 
