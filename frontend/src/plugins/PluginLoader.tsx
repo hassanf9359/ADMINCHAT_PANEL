@@ -50,7 +50,6 @@ async function loadRemoteModule(pluginId: string, moduleName: string): Promise<C
 
     const script = document.createElement('script');
     script.src = remoteUrl;
-    script.type = 'module';
 
     const timeoutId = setTimeout(() => {
       cleanup();

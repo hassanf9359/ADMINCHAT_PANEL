@@ -5,6 +5,13 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.15] - 2026-03-27
+
+### Fixed
+- **Plugin remoteEntry.js fails with "Failed to resolve module specifier 'react'"** — PluginLoader loaded scripts as `type="module"`, but plugins built with externals produce bare specifiers that browsers can't resolve; removed `type="module"` to support IIFE-format plugin bundles
+
+[1.0.15]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.14...v1.0.15
+
 ## [1.0.14] - 2026-03-27
 
 ### Fixed
