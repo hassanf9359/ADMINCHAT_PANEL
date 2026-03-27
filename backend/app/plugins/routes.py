@@ -95,8 +95,10 @@ async def _download_zip(url: str) -> Path:
     except httpx.HTTPStatusError as exc:
         Path(tmp.name).unlink(missing_ok=True)
         if exc.response.status_code in (401, 403):
+            # Use 422 instead of 401 to avoid triggering the frontend's
+            # JWT token refresh interceptor (401 is reserved for Panel auth)
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Market authentication required. Please connect to ACP Market in Settings > Market before installing plugins.",
             ) from exc
         raise HTTPException(

@@ -562,7 +562,7 @@ class PluginManager:
                 .where(InstalledPlugin.plugin_id == plugin_id)
                 .values(
                     status="active",
-                    activated_at=datetime.now(timezone.utc),
+                    activated_at=datetime.utcnow(),
                     error_count=0,
                     last_error=None,
                 )
