@@ -5,6 +5,20 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-03-27
+
+### Fixed
+- **Install returns 401 triggering JWT refresh loop** — Market auth failure (401/403) was returned as HTTP 401 which collided with Panel's JWT auth interceptor, causing infinite refresh loops; now returns 422 with clear "Market authentication required" message
+- **`activated_at` timezone crash** — `datetime.now(timezone.utc)` (aware) vs `TIMESTAMP WITHOUT TIME ZONE` (naive) column mismatch caused `asyncpg.DataError: can't subtract offset-naive and offset-aware datetimes` on plugin activation
+- **Plugin action errors silently swallowed** — `handlePluginAction` (activate/deactivate/update in Installed tab) had no catch block; failures now show error toast with backend detail
+- **Notification timer not reset on rapid updates** — Old timer could dismiss new notification early; useEffect now depends on `message`
+- **PluginLoader timeout leaked script tags** — Timeout path now calls `script.remove()` matching the onerror cleanup
+
+### Changed
+- Error message extraction unified via `getErrorMessage()` utility using `isAxiosError` instead of fragile type assertions
+
+[1.0.6]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.5...v1.0.6
+
 ## [1.0.5] - 2026-03-27
 
 ### Fixed
