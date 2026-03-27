@@ -71,6 +71,7 @@ services:
     env_file: .env
     volumes:
       - media_cache:/app/media
+      - plugin_data:/data/plugins
     ports:
       - "8000:8000"
     healthcheck:

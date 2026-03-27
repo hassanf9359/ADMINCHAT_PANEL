@@ -21,8 +21,10 @@ services:
     volumes:
       # [NAMED VOLUME] Docker-managed (default)
       - adminchat_media:/app/media
+      - adminchat_plugins:/data/plugins
       # [BIND MOUNT] Uncomment below, comment above
       # - ./data/media:/app/media
+      # - ./data/plugins:/data/plugins
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     networks:
@@ -46,6 +48,8 @@ services:
 volumes:
   adminchat_media:
     name: adminchat_media
+  adminchat_plugins:
+    name: adminchat_plugins
 
 networks:
   adminchat:

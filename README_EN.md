@@ -156,6 +156,7 @@ User message → FAQ match → Get template with {variable} placeholders → AI 
 - **Ed25519 Bundle Signature Verification** &mdash; Auto-fetches Market's public key; verifies Ed25519 signatures on plugin downloads to prevent bundle tampering
 - **Uninstall Confirmation & Data Cleanup** &mdash; Confirmation dialog before uninstalling with optional "Delete all plugin data (database tables)" checkbox
 - **Plugin Settings Shortcut** &mdash; Installed plugins with settings tabs show a gear icon that navigates directly to the corresponding Settings tab
+- **Plugin Data Persistence** &mdash; Plugin files stored in a dedicated `/data/plugins` volume, surviving container restarts; load failures display error message with Retry button
 - **Plugin SDK + CLI** &mdash; [acp-plugin-sdk](https://github.com/fxxkrlab/acp-plugin-sdk) provides type hints + `acp-cli` CLI tool for init / validate / build / publish workflow
 - **Official Plugin Repository** &mdash; [ACP_PLUGINS](https://github.com/fxxkrlab/ACP_PLUGINS) open-source example plugins (e.g. TMDB Movie Request System)
 

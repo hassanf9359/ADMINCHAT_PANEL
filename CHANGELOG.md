@@ -5,19 +5,23 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.4] - 2026-03-27
+## [1.0.5] - 2026-03-27
 
 ### Fixed
+- **Plugin data lost on container restart** — `/data/plugins` directory was not mounted as a persistent volume; added `adminchat_plugins` volume to all deploy configurations (docker-compose.full.yml, docker-compose.standalone.yml, docker-run.sh)
+- **PluginLoader crash could block navigation** — Plugin frontend module load failure (404/timeout) could leave the page in a broken state; added 10s load timeout, failed script tag cleanup, retry tracking, and a manual Retry button
 - **"Update to v" empty version** — Plugin detail modal showed "Update to v" with no version number because the detail API doesn't return `latest_version`; now falls back to `versions[0].version`
-- **Hardcoded Market URL in frontend** — `installFromMarket()` hardcoded `acpmarket.novahelix.org` download URL; now backend constructs the URL from `settings.ACP_MARKET_URL`, making the frontend Market-URL-agnostic
+- **Hardcoded Market URL in frontend** — `installFromMarket()` hardcoded `acpmarket.novahelix.org` download URL; now backend constructs the URL from `settings.ACP_MARKET_URL`
 
 ### Added
-- **Uninstall confirmation dialog** — Trash button now shows a confirmation modal before uninstalling, with a "Delete all plugin data" checkbox that sends `drop_tables: true` to the backend
-- **Plugin settings button** — Installed plugins with `settings_tabs` in their manifest now show a gear icon that navigates directly to Settings with the plugin's tab auto-selected
-- **Install success/error toast** — Fixed top-right notification toast on plugin install success ("Plugin installed and activated successfully") or failure (error message), auto-dismisses after 4 seconds
-- **Uninstall success/error toast** — Same notification pattern for uninstall actions
+- **Activate/Deactivate buttons in Browse tab** — Plugin cards now show Active/Inactive status badge with a toggle button to activate or deactivate plugins directly from the Browse tab and detail modal
+- **Uninstall button in detail modal** — Plugin detail modal footer now shows an Uninstall button (left-aligned) that triggers the confirmation dialog
+- **Uninstall confirmation dialog** — Trash button shows a confirmation modal before uninstalling, with a "Delete all plugin data" checkbox that sends `drop_tables: true` to the backend
+- **Plugin settings shortcut** — Installed plugins with `settings_tabs` show a gear icon that navigates directly to Settings with the plugin's tab auto-selected
+- **Install/uninstall toast notifications** — Success/error feedback toast (auto-dismiss after 4s) for install and uninstall actions
+- **Plugin data volume in deploy configs** — All deployment files now include persistent volume mount for `/data/plugins`
 
-[1.0.4]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.3...v1.0.4
+[1.0.5]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.3...v1.0.5
 
 ## [1.0.3] - 2026-03-27
 

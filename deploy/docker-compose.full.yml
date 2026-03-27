@@ -57,8 +57,10 @@ services:
     volumes:
       # [NAMED VOLUME] Docker-managed (default)
       - adminchat_media:/app/media
+      - adminchat_plugins:/data/plugins
       # [BIND MOUNT] Uncomment below, comment above
       # - ./data/media:/app/media
+      # - ./data/plugins:/data/plugins
     # [NO PROXY] Uncomment to expose port directly
     # ports:
     #   - "${BACKEND_PORT:-8000}:8000"
@@ -192,6 +194,8 @@ volumes:
     name: adminchat_redisdata
   adminchat_media:
     name: adminchat_media
+  adminchat_plugins:
+    name: adminchat_plugins
   # Uncomment if using Caddy
   # adminchat_caddy_data:
   #   name: adminchat_caddy_data

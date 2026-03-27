@@ -359,6 +359,7 @@ docker network connect your-shared-network gte-embedding
 - **Ed25519 插件签名验证** &mdash; 自动从 Market 获取公钥，下载插件时验证 Ed25519 签名，防止插件包被篡改
 - **卸载确认与数据清理** &mdash; 卸载插件前弹出确认对话框，可选"删除所有插件数据（数据库表）"
 - **插件设置快捷入口** &mdash; 已安装插件列表中带有设置面板的插件显示齿轮图标，点击直接跳转到对应设置标签页
+- **插件数据持久化** &mdash; 插件文件存储在独立的 `/data/plugins` 卷中，容器重启后不会丢失；加载失败时自动显示错误信息和重试按钮
 - **Plugin SDK + CLI** &mdash; [acp-plugin-sdk](https://github.com/fxxkrlab/acp-plugin-sdk) 提供类型提示 + `acp-cli` 命令行工具，支持 init / validate / build / publish 全流程
 - **官方插件仓库** &mdash; [ACP_PLUGINS](https://github.com/fxxkrlab/ACP_PLUGINS) 开源示例插件（如 TMDB 求片系统）
 

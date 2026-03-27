@@ -41,12 +41,16 @@ docker network create adminchat 2>/dev/null || true
 # ---- Choose volume type ----
 # Option A: Named volumes (recommended, managed by Docker)
 MEDIA_VOLUME="adminchat-media"
+PLUGINS_VOLUME="adminchat-plugins"
 docker volume create ${MEDIA_VOLUME} 2>/dev/null || true
+docker volume create ${PLUGINS_VOLUME} 2>/dev/null || true
 MEDIA_MOUNT="-v ${MEDIA_VOLUME}:/app/media"
+PLUGINS_MOUNT="-v ${PLUGINS_VOLUME}:/data/plugins"
 
 # Option B: Bind mount (uncomment below, comment out Option A)
-# mkdir -p ./data/media
+# mkdir -p ./data/media ./data/plugins
 # MEDIA_MOUNT="-v $(pwd)/data/media:/app/media"
+# PLUGINS_MOUNT="-v $(pwd)/data/plugins:/data/plugins"
 
 # ---- Backend ----
 echo "Starting backend..."
@@ -58,6 +62,7 @@ docker run -d \
     --restart unless-stopped \
     --env-file .env \
     ${MEDIA_MOUNT} \
+    ${PLUGINS_MOUNT} \
     -p 8000:8000 \
     --health-cmd="curl -f http://localhost:8000/health || exit 1" \
     --health-interval=30s \
