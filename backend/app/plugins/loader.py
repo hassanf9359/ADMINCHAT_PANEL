@@ -297,6 +297,14 @@ class PluginManager:
         global _plugin_manager
         _plugin_manager = self
 
+        # Fix _app reference if it became a module during import
+        from fastapi import FastAPI as _FastAPI
+        if not isinstance(self._app, _FastAPI):
+            logger.warning("Fixing _app at startup (was %s)", type(self._app).__name__)
+            from app.main import app as real_app
+            self._app = real_app
+            self._static_server._app = real_app
+
         # Try to load Market public key from system_settings cache
         await self._load_cached_public_key()
 
