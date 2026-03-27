@@ -31,17 +31,6 @@ class PluginStaticServer:
             return
 
         mount_path = f"/api/v1/plugins/{plugin_id}/static"
-
-        # Guard: ensure _app is still a FastAPI instance, not a module
-        from fastapi import FastAPI as _FastAPI
-        if not isinstance(self._app, _FastAPI):
-            logger.error(
-                "PluginStaticServer._app is %s (expected FastAPI), skipping mount for %s",
-                type(self._app),
-                plugin_id,
-            )
-            return
-
         self._app.mount(
             mount_path,
             StaticFiles(directory=str(frontend_dir), html=True),

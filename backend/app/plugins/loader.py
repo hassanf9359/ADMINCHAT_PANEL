@@ -514,11 +514,18 @@ class PluginManager:
                 "Migration failed for plugin %s", plugin_id
             )
 
+        # Resolve the FastAPI app (guard against _app becoming a module ref)
+        from fastapi import FastAPI as _FastAPI
+        _real_app = self._app
+        if not isinstance(_real_app, _FastAPI):
+            logger.warning("self._app is %s, resolving from app.main", type(_real_app).__name__)
+            from app.main import app as _real_app
+
         # 4. Mount API router
         if hasattr(module, "get_router"):
             try:
                 api_router = module.get_router()
-                self._router_mount.mount(self._app, plugin_id, api_router)
+                self._router_mount.mount(_real_app, plugin_id, api_router)
             except Exception:
                 logger.exception(
                     "Failed to mount API router for plugin %s", plugin_id
@@ -536,6 +543,7 @@ class PluginManager:
                 )
 
         # 4c. Mount static files
+        self._static_server._app = _real_app  # ensure correct app ref
         self._static_server.mount(plugin_id, plugin_path)
 
         # 5. Create PluginContext and call setup()
