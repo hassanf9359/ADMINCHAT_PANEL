@@ -473,9 +473,10 @@ class PluginManager:
         try:
             # Add plugin root to sys.path so intra-plugin imports work
             # e.g. "from backend.routes import router" inside backend/plugin.py
+            # Append (not insert) to avoid shadowing the host app's 'app' package
             plugin_path_str = str(plugin_path)
             if plugin_path_str not in sys.path:
-                sys.path.insert(0, plugin_path_str)
+                sys.path.append(plugin_path_str)
 
             spec = importlib.util.spec_from_file_location(
                 mod_name, str(entry_file)

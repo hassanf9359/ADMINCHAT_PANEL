@@ -288,7 +288,24 @@ async def market_status(
     if not data.get("access_token"):
         return APIResponse(data={"connected": False})
 
-    # Return cached account info (fetched on connect), no external API call
+    # Quick token validity check (decode JWT exp without calling Market)
+    token_expired = False
+    try:
+        import base64, json as _json
+        payload_b64 = data["access_token"].split(".")[1]
+        payload_b64 += "=" * (4 - len(payload_b64) % 4)  # pad
+        payload = _json.loads(base64.urlsafe_b64decode(payload_b64))
+        if payload.get("exp") and payload["exp"] < datetime.now(timezone.utc).timestamp():
+            token_expired = True
+    except Exception:
+        pass  # non-JWT token (e.g. API key) — skip check
+
+    if token_expired:
+        return APIResponse(data={
+            "connected": False,
+            "error": "Market session expired. Please reconnect in Settings > Market.",
+        })
+
     return APIResponse(data={
         "connected": True,
         "auth_type": stored.value.get("auth_type", "unknown"),
