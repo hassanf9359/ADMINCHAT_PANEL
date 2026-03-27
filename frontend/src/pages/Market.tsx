@@ -244,7 +244,8 @@ function PluginDetailModal({
   if (!plugin) return null;
 
   const isFree = plugin.pricing_model === 'free';
-  const latestVersion = plugin.latest_version || plugin.versions?.[0]?.version;
+  const latestVersion = plugin.latest_version
+    || (plugin.versions?.length ? [...plugin.versions].sort((a, b) => b.published_at.localeCompare(a.published_at))[0].version : undefined);
   const hasUpdate = isInstalled && installedVersion && latestVersion && installedVersion !== latestVersion;
 
   return (
@@ -938,7 +939,8 @@ export default function Market() {
             installedStatus={installedMap.get(selectedPluginId)?.status}
             onClose={() => setSelectedPluginId(null)}
             onInstall={() => {
-              const latestVersion = pluginDetail?.latest_version || pluginDetail?.versions?.[0]?.version || '';
+              const latestVersion = pluginDetail?.latest_version
+                || (pluginDetail?.versions?.length ? [...pluginDetail.versions].sort((a, b) => b.published_at.localeCompare(a.published_at))[0].version : '');
               handleInstall(selectedPluginId, latestVersion);
             }}
             onUninstall={installedMap.has(selectedPluginId) ? () => {

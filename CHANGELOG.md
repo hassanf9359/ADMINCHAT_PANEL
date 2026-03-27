@@ -5,6 +5,13 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2026-03-27
+
+### Fixed
+- **"Update to v1.0.0" shown when v1.0.1 installed** — Detail modal fallback picked `versions[0]` (oldest) instead of sorting by `published_at` descending to find the newest; also fixed install handler's version selection
+
+[1.0.11]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.10...v1.0.11
+
 ## [1.0.10] - 2026-03-27
 
 ### Fixed
