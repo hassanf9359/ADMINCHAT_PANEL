@@ -5,6 +5,16 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-03-27
+
+### Added
+- **Market connection banner** — Browse tab shows orange warning banner when Market is not connected, with "Go to Settings" button that navigates directly to Settings > Market tab
+
+### Fixed
+- **Market credentials lost on container restart** — `OAUTH_ENCRYPTION_KEY` must be set in `.env` for credentials to persist; deployment docs updated with this requirement
+
+[1.0.7]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.6...v1.0.7
+
 ## [1.0.6] - 2026-03-27
 
 ### Fixed

@@ -440,15 +440,17 @@ export default function Settings() {
     }))
   );
 
-  // Auto-select plugin settings tab when navigated from Market
+  // Auto-select tab when navigated with state (e.g. from Market page)
   useEffect(() => {
-    const state = location.state as { pluginTab?: string } | null;
-    if (state?.pluginTab) {
+    const state = location.state as { tab?: string; pluginTab?: string } | null;
+    if (state?.tab) {
+      setActiveTab(state.tab);
+      window.history.replaceState({}, '');
+    } else if (state?.pluginTab) {
       const matchingTab = pluginSettingsTabs.find(t => t.pluginId === state.pluginTab);
       if (matchingTab) {
         setActiveTab(matchingTab.key);
       }
-      // Clear the state so it doesn't re-trigger
       window.history.replaceState({}, '');
     }
   }, [location.state, pluginSettingsTabs]);

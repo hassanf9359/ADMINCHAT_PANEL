@@ -24,6 +24,7 @@ import {
   getMarketPluginDetail,
   installFromMarket,
   checkPluginUpdates,
+  getMarketStatus,
   type MarketPlugin,
   type MarketPluginDetail,
 } from '../services/marketApi';
@@ -633,6 +634,14 @@ export default function Market() {
   const [uninstallTarget, setUninstallTarget] = useState<InstalledPlugin | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Market connection status
+  const { data: marketStatus } = useQuery({
+    queryKey: ['market-status'],
+    queryFn: getMarketStatus,
+    staleTime: 300_000,
+  });
+  const isMarketConnected = marketStatus?.connected === true;
+
   // Queries
   const { data: browseData, isLoading: browseLoading } = useQuery({
     queryKey: ['market-plugins', searchQuery, category, pricing, sort],
@@ -787,6 +796,22 @@ export default function Market() {
             </button>
           )}
         </div>
+
+        {/* Market not connected banner */}
+        {!isMarketConnected && marketStatus && (
+          <div className="flex items-center gap-3 px-4 py-3 mb-5 rounded-lg bg-[#FF8800]/10 border border-[#FF8800]/20">
+            <AlertTriangle size={16} className="text-[#FF8800] shrink-0" />
+            <span className="text-sm text-[#FF8800]">
+              Market not connected. Connect to install plugins.
+            </span>
+            <button
+              onClick={() => navigate('/settings', { state: { tab: 'market' } })}
+              className="ml-auto px-3 py-1 rounded-md bg-[#FF8800] text-black text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              Go to Settings
+            </button>
+          </div>
+        )}
 
         {/* Browse Tab */}
         {activeTab === 'browse' && (
