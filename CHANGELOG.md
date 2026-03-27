@@ -5,6 +5,14 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2026-03-27
+
+### Fixed
+- **Plugin install returns 500 when activation fails** — Auto-activate after install threw unhandled `AttributeError` (static server mount issue), now caught gracefully; install succeeds with warning message, user can activate manually
+- **Static server mount guard** — Added type check to prevent crash when `_app` reference is corrupted; logs error and skips mount instead of crashing
+
+[1.0.10]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.9...v1.0.10
+
 ## [1.0.9] - 2026-03-27
 
 ### Fixed

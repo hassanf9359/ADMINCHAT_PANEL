@@ -197,9 +197,21 @@ async def install_plugin(
             license_key=body.license_key,
         )
 
-        # Auto-activate after install
-        info = await pm.activate(body.plugin_id)
-        return APIResponse(data=info.model_dump(), message="Plugin installed and activated")
+        # Auto-activate after install (best-effort — activation may fail
+        # if the plugin has backend/frontend issues, but install is still valid)
+        try:
+            info = await pm.activate(body.plugin_id)
+            return APIResponse(data=info.model_dump(), message="Plugin installed and activated")
+        except Exception as activate_exc:
+            logger.warning(
+                "Plugin %s installed but activation failed: %s",
+                body.plugin_id,
+                activate_exc,
+            )
+            return APIResponse(
+                data=info.model_dump(),
+                message=f"Plugin installed (activation failed: {activate_exc}). You can activate it manually from the Installed tab.",
+            )
 
     except PluginError as exc:
         raise _map_plugin_error(exc) from exc
