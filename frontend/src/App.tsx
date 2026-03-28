@@ -126,6 +126,13 @@ function AppRoutes() {
             }
           />
         ))}
+
+        {/* Catch-all for /p/* while plugin data loads (suppresses "No routes matched" warning) */}
+        <Route path="/p/*" element={
+          <div className="flex items-center justify-center h-full">
+            <div className="w-6 h-6 border-2 border-[#00D9FF] border-t-transparent rounded-full animate-spin" />
+          </div>
+        } />
       </Route>
     </Routes>
   );
