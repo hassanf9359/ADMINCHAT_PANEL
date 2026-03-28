@@ -6,10 +6,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App';
 
-// Expose React to window for plugin IIFE bundles
+// Expose shared libs to window for plugin IIFE bundles
 // Plugins use external + globals to reference these instead of bundling their own copy
+import * as TanStackReactQuery from '@tanstack/react-query';
 (window as any).React = React;
 (window as any).ReactDOM = ReactDOM;
+(window as any).TanStackReactQuery = TanStackReactQuery;
 
 const queryClient = new QueryClient({
   defaultOptions: {
