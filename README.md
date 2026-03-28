@@ -360,6 +360,7 @@ docker network connect your-shared-network gte-embedding
 - **卸载确认与数据清理** &mdash; 卸载插件前弹出确认对话框，可选"删除所有插件数据（数据库表）"
 - **插件设置快捷入口** &mdash; 已安装插件列表中带有设置面板的插件显示齿轮图标，点击直接跳转到对应设置标签页
 - **插件数据持久化** &mdash; 插件文件存储在独立的 `/data/plugins` 卷中，容器重启后不会丢失；加载失败时自动显示错误信息和重试按钮
+- **共享依赖架构** &mdash; Panel 通过 `window` 全局变量向插件提供 React / ReactDOM / TanStack Query 等共享依赖，插件以 IIFE 格式构建，避免双 React 实例和模块解析问题
 - **Plugin SDK + CLI** &mdash; [acp-plugin-sdk](https://github.com/fxxkrlab/acp-plugin-sdk) 提供类型提示 + `acp-cli` 命令行工具，支持 init / validate / build / publish 全流程
 - **官方插件仓库** &mdash; [ACP_PLUGINS](https://github.com/fxxkrlab/ACP_PLUGINS) 开源示例插件（如 TMDB 求片系统）
 
