@@ -898,7 +898,22 @@ export default function Market() {
                       isInstalled={!!installed}
                       installedVersion={installed?.version}
                       installedStatus={installed?.status}
-                      onInstall={() => handleInstall(plugin.plugin_id, plugin.latest_version)}
+                      onInstall={async () => {
+                        if (installed) {
+                          setActionLoading(plugin.plugin_id);
+                          try {
+                            await api.post(`/plugins/${plugin.plugin_id}/update`, { version: plugin.latest_version });
+                            invalidatePlugins();
+                            setNotification({ type: 'success', message: 'Plugin updated successfully' });
+                          } catch (error) {
+                            setNotification({ type: 'error', message: getErrorMessage(error, 'Failed to update plugin') });
+                          } finally {
+                            setActionLoading(null);
+                          }
+                        } else {
+                          handleInstall(plugin.plugin_id, plugin.latest_version);
+                        }
+                      }}
                       onToggleActive={installed ? () => handleToggleActive(plugin.plugin_id) : undefined}
                       onClick={() => setSelectedPluginId(plugin.plugin_id)}
                       installing={installMutation.isPending && installMutation.variables?.pluginId === plugin.plugin_id}
