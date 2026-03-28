@@ -47,6 +47,9 @@ class HotSwappableRouter:
 
     def _rebuild(self) -> None:
         """Rebuild the master router's sub_routers list sorted by priority."""
+        # Detach all existing sub-routers first (clear parent_router reference)
+        for r in list(self.master_router.sub_routers):
+            r._parent_router = None  # noqa: SLF001 — reset aiogram internal ref
         self.master_router.sub_routers.clear()
 
         sorted_entries = sorted(
@@ -55,6 +58,8 @@ class HotSwappableRouter:
         )
 
         for _plugin_id, (router, _priority) in sorted_entries:
+            # Reset parent ref in case it was attached before
+            router._parent_router = None  # noqa: SLF001
             self.master_router.include_router(router)
 
     @property
