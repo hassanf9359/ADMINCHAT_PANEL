@@ -17,12 +17,12 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
 
   const bubbleClasses = useMemo(() => {
     if (isInbound) {
-      return 'bg-[#141414] border-[#2f2f2f] rounded-[12px_12px_12px_2px]';
+      return 'bg-bg-elevated border-border rounded-[12px_12px_12px_2px]';
     }
     if (isFaq) {
-      return 'bg-[#05966910] border-[#05966930] rounded-[12px_12px_2px_12px]';
+      return 'bg-green/5 border-green/20 rounded-[12px_12px_2px_12px]';
     }
-    return 'bg-[#00D9FF15] border-[#00D9FF30] rounded-[12px_12px_2px_12px]';
+    return 'bg-accent/10 border-accent/20 rounded-[12px_12px_2px_12px]';
   }, [isInbound, isFaq]);
 
   const botTag = message.sent_by_bot_name || message.via_bot_name;
@@ -47,25 +47,25 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
         {!isInbound && (
           <div className="flex items-center gap-2 mb-2">
             {isFaq && message.sender_type !== 'ai' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#059669] text-white text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-green text-white text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
                 <BookOpen size={12} />
                 FAQ
               </span>
             )}
             {message.sender_type === 'ai' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#8B5CF6] text-white text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-purple text-text-primary text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
                 <Sparkles size={12} />
                 AI
               </span>
             )}
             {isAdmin && !isFaq && message.sender_type !== 'ai' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#00D9FF] text-[#0C0C0C] text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-accent text-bg-page text-[11px] font-bold font-['JetBrains_Mono'] tracking-wide">
                 <User size={12} />
                 Human
               </span>
             )}
             {botTag && (
-              <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono']">
+              <span className="text-[10px] text-text-muted font-['JetBrains_Mono']">
                 via {botTag}
               </span>
             )}
@@ -100,7 +100,7 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
             href={mediaUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 mb-2 px-3 py-2 bg-[#141414] rounded border border-[#2f2f2f] text-sm text-[#00D9FF] hover:text-[#00D9FF]/80 transition-colors"
+            className="flex items-center gap-2 mb-2 px-3 py-2 bg-bg-elevated rounded border border-border text-sm text-accent hover:text-accent/80 transition-colors"
           >
             <Download size={14} />
             <span>Download file</span>
@@ -109,7 +109,7 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
 
         {/* Text content with Markdown */}
         {textContent && (
-          <div className="text-[14px] text-white leading-relaxed prose prose-invert prose-sm max-w-none [&_p]:my-0.5 [&_code]:text-[#00D9FF] [&_code]:bg-[#141414] [&_code]:px-1 [&_code]:rounded [&_pre]:bg-[#141414] [&_pre]:rounded [&_pre]:p-2 [&_a]:text-[#00D9FF]">
+          <div className="text-[14px] text-text-primary leading-relaxed prose prose-invert prose-sm max-w-none [&_p]:my-0.5 [&_code]:text-accent [&_code]:bg-bg-elevated [&_code]:px-1 [&_code]:rounded [&_pre]:bg-bg-elevated [&_pre]:rounded [&_pre]:p-2 [&_a]:text-accent">
             <ReactMarkdown>{textContent}</ReactMarkdown>
           </div>
         )}
@@ -117,21 +117,21 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
         {/* Footer: timestamp + tags */}
         <div className="flex items-center gap-1.5 mt-1.5 justify-end flex-wrap">
           {isFaq && (
-            <span className="text-[10px] text-[#059669] font-['JetBrains_Mono'] font-semibold bg-[#059669]/10 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-green font-['JetBrains_Mono'] font-semibold bg-green/10 px-1.5 py-0.5 rounded">
               FAQ Auto-Reply
             </span>
           )}
           {message.sender_type === 'ai' && (
-            <span className="text-[10px] text-[#8B5CF6] font-['JetBrains_Mono'] font-semibold bg-[#8B5CF6]/10 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-purple font-['JetBrains_Mono'] font-semibold bg-purple/10 px-1.5 py-0.5 rounded">
               AI Reply
             </span>
           )}
           {message.faq_rule_name && (
-            <span className="text-[10px] text-[#059669]/70 font-['JetBrains_Mono'] bg-[#059669]/5 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-green/70 font-['JetBrains_Mono'] bg-green/5 px-1.5 py-0.5 rounded">
               {message.faq_rule_name}
             </span>
           )}
-          <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono']">
+          <span className="text-[10px] text-text-muted font-['JetBrains_Mono']">
             {formatTime(message.created_at)}
           </span>
         </div>

@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import { useAuthStore } from '../stores/authStore';
 import type { InstalledPlugin } from './types';
 
 export function useInstalledPlugins() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return useQuery({
     queryKey: ['installed-plugins'],
     queryFn: async (): Promise<InstalledPlugin[]> => {
@@ -11,6 +13,7 @@ export function useInstalledPlugins() {
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+    enabled: isAuthenticated,
   });
 }
 

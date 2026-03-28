@@ -41,10 +41,10 @@ function SettingCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-8 px-5 py-4 border-b border-[#1A1A1A] last:border-0">
+    <div className="flex items-start justify-between gap-8 px-5 py-4 border-b border-border-subtle last:border-0">
       <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-medium text-white">{label}</h4>
-        {description && <p className="text-xs text-[#6a6a6a] mt-0.5">{description}</p>}
+        <h4 className="text-sm font-medium text-text-primary">{label}</h4>
+        {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
       </div>
       <div className="flex-shrink-0">{children}</div>
     </div>
@@ -58,7 +58,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       type="button"
       onClick={() => onChange(!value)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        value ? 'bg-[#00D9FF]' : 'bg-[#141414] border border-[#2f2f2f]'
+        value ? 'bg-accent' : 'bg-bg-elevated border border-border'
       }`}
     >
       <span
@@ -127,10 +127,10 @@ function MarketTab({
   return (
     <div className="space-y-6">
       {/* Market URL */}
-      <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#2f2f2f]">
-          <h3 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">ACP Market</h3>
-          <p className="text-xs text-[#6a6a6a] mt-1">Configure connection to the ACP Plugin Market</p>
+      <div className="bg-bg-card border border-border rounded-[10px] overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="text-[18px] font-semibold text-text-primary font-['Space_Grotesk']">ACP Market</h3>
+          <p className="text-xs text-text-muted mt-1">Configure connection to the ACP Plugin Market</p>
         </div>
         <div className="p-5">
           <SettingCard label="Market URL" description="ACP Market API base URL. Change this if you run a self-hosted Market instance.">
@@ -139,7 +139,7 @@ function MarketTab({
               value={String(localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1')}
               onChange={(e) => setLocalSettings((s) => ({ ...s, acp_market_url: e.target.value }))}
               placeholder="https://acpmarket.novahelix.org/api/v1"
-              className="w-full md:w-96 h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white font-mono placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+              className="w-full md:w-96 h-10 px-3 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary font-mono placeholder:text-text-placeholder focus:outline-none focus:border-accent transition-colors"
             />
           </SettingCard>
           <div className="flex justify-end pt-3">
@@ -148,7 +148,7 @@ function MarketTab({
                 acp_market_url: localSettings['acp_market_url'] ?? 'https://acpmarket.novahelix.org/api/v1',
               })}
               disabled={saveMutation.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
             >
               {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save URL
@@ -158,13 +158,13 @@ function MarketTab({
       </div>
 
       {/* Connection Status */}
-      <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#2f2f2f]">
-          <h3 className="text-sm font-semibold text-white font-['Space_Grotesk']">Connection Status</h3>
+      <div className="bg-bg-card border border-border rounded-[10px] overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-text-primary font-['Space_Grotesk']">Connection Status</h3>
         </div>
         <div className="p-5">
           {statusLoading ? (
-            <div className="flex items-center gap-2 text-[#6a6a6a] text-sm">
+            <div className="flex items-center gap-2 text-text-muted text-sm">
               <Loader2 size={14} className="animate-spin" />
               Checking connection...
             </div>
@@ -173,19 +173,19 @@ function MarketTab({
               {/* Connected badge */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#059669]" />
-                  <span className="text-sm font-medium text-white">Connected</span>
+                  <div className="w-2 h-2 rounded-full bg-green" />
+                  <span className="text-sm font-medium text-text-primary">Connected</span>
                 </div>
-                <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#00D9FF]/10 text-[#00D9FF]">
+                <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-accent/10 text-accent">
                   {status?.auth_type === 'env' ? 'ENV VAR' : status?.auth_type === 'api_key' ? 'API KEY' : 'LOGIN'}
                 </span>
               </div>
 
               {/* Env var notice */}
               {status?.source === 'environment_variable' && (
-                <div className="flex items-start gap-2 px-3 py-2.5 bg-[#FF8800]/5 border border-[#FF8800]/20 rounded-lg">
-                  <Info size={14} className="text-[#FF8800] mt-0.5 flex-shrink-0" />
-                  <p className="text-[11px] text-[#FF8800]">
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-orange/5 border border-orange/20 rounded-lg">
+                  <Info size={14} className="text-orange mt-0.5 flex-shrink-0" />
+                  <p className="text-[11px] text-orange">
                     Connected via <span className="font-['JetBrains_Mono']">ACP_MARKET_API_KEY</span> environment variable. Cannot disconnect from UI.
                   </p>
                 </div>
@@ -196,33 +196,33 @@ function MarketTab({
                 <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-2">
                   {account.username && (
                     <div>
-                      <p className="text-[11px] text-[#6a6a6a] mb-0.5">Username</p>
-                      <p className="text-sm text-white font-['JetBrains_Mono']">{account.username}</p>
+                      <p className="text-[11px] text-text-muted mb-0.5">Username</p>
+                      <p className="text-sm text-text-primary font-['JetBrains_Mono']">{account.username}</p>
                     </div>
                   )}
                   {account.role && (
                     <div>
-                      <p className="text-[11px] text-[#6a6a6a] mb-0.5">Role</p>
-                      <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#8B5CF6]/10 text-[#8B5CF6]">
+                      <p className="text-[11px] text-text-muted mb-0.5">Role</p>
+                      <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-purple/10 text-purple">
                         {account.role.toUpperCase()}
                       </span>
                     </div>
                   )}
                   {account.email && (
                     <div>
-                      <p className="text-[11px] text-[#6a6a6a] mb-0.5">Email</p>
+                      <p className="text-[11px] text-text-muted mb-0.5">Email</p>
                       <div className="flex items-center gap-1.5">
-                        <p className="text-sm text-white font-['JetBrains_Mono']">{account.email}</p>
-                        {account.is_verified && <CheckCircle2 size={12} className="text-[#059669]" />}
+                        <p className="text-sm text-text-primary font-['JetBrains_Mono']">{account.email}</p>
+                        {account.is_verified && <CheckCircle2 size={12} className="text-green" />}
                       </div>
                     </div>
                   )}
                   <div>
-                    <p className="text-[11px] text-[#6a6a6a] mb-0.5">Status</p>
+                    <p className="text-[11px] text-text-muted mb-0.5">Status</p>
                     <span className={`text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded ${
                       account.is_active !== false
-                        ? 'bg-[#059669]/10 text-[#059669]'
-                        : 'bg-[#FF4444]/10 text-[#FF4444]'
+                        ? 'bg-green/10 text-green'
+                        : 'bg-red/10 text-red'
                     }`}>
                       {account.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
                     </span>
@@ -231,7 +231,7 @@ function MarketTab({
               )}
 
               {!account && (
-                <p className="text-xs text-[#6a6a6a]">Connected but unable to fetch account details.</p>
+                <p className="text-xs text-text-muted">Connected but unable to fetch account details.</p>
               )}
 
               {/* Disconnect button */}
@@ -240,7 +240,7 @@ function MarketTab({
                   <button
                     onClick={() => disconnectMut.mutate()}
                     disabled={disconnectMut.isPending}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-[#FF4444]/30 text-[#FF4444] text-sm font-medium rounded-lg hover:bg-[#FF4444]/5 disabled:opacity-50 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-red/30 text-red text-sm font-medium rounded-lg hover:bg-red/5 disabled:opacity-50 transition-colors"
                   >
                     {disconnectMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Unplug size={14} />}
                     Disconnect
@@ -252,8 +252,8 @@ function MarketTab({
             /* Not connected — show login/API key form */
             <div className="space-y-5">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#6a6a6a]" />
-                <span className="text-sm text-[#8a8a8a]">Not connected</span>
+                <div className="w-2 h-2 rounded-full bg-text-muted" />
+                <span className="text-sm text-text-secondary">Not connected</span>
               </div>
 
               {/* Method selector */}
@@ -262,8 +262,8 @@ function MarketTab({
                   onClick={() => { setConnectMethod('login'); setConnectError(''); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     connectMethod === 'login'
-                      ? 'bg-[#00D9FF]/10 text-[#00D9FF] border border-[#00D9FF]/30'
-                      : 'bg-[#141414] text-[#8a8a8a] border border-[#2f2f2f] hover:text-white'
+                      ? 'bg-accent/10 text-accent border border-accent/30'
+                      : 'bg-bg-elevated text-text-secondary border border-border hover:text-text-primary'
                   }`}
                 >
                   <LogIn size={14} />
@@ -273,8 +273,8 @@ function MarketTab({
                   onClick={() => { setConnectMethod('api_key'); setConnectError(''); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     connectMethod === 'api_key'
-                      ? 'bg-[#00D9FF]/10 text-[#00D9FF] border border-[#00D9FF]/30'
-                      : 'bg-[#141414] text-[#8a8a8a] border border-[#2f2f2f] hover:text-white'
+                      ? 'bg-accent/10 text-accent border border-accent/30'
+                      : 'bg-bg-elevated text-text-secondary border border-border hover:text-text-primary'
                   }`}
                 >
                   <Key size={14} />
@@ -286,29 +286,29 @@ function MarketTab({
               {connectMethod === 'login' && (
                 <div className="space-y-3 max-w-md">
                   <div>
-                    <label className="block text-[11px] text-[#6a6a6a] mb-1.5">Email</label>
+                    <label className="block text-[11px] text-text-muted mb-1.5">Email</label>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                      className="w-full h-10 px-3 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-[#6a6a6a] mb-1.5">Password</label>
+                    <label className="block text-[11px] text-text-muted mb-1.5">Password</label>
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter password"
-                      className="w-full h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                      className="w-full h-10 px-3 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent transition-colors"
                     />
                   </div>
                   <button
                     onClick={() => connectMut.mutate()}
                     disabled={connectMut.isPending || !email || !password}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
                   >
                     {connectMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
                     Login
@@ -320,19 +320,19 @@ function MarketTab({
               {connectMethod === 'api_key' && (
                 <div className="space-y-3 max-w-md">
                   <div>
-                    <label className="block text-[11px] text-[#6a6a6a] mb-1.5">API Key (JWT token)</label>
+                    <label className="block text-[11px] text-text-muted mb-1.5">API Key (JWT token)</label>
                     <input
                       type="password"
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       placeholder="Paste your Market API key or JWT token"
-                      className="w-full h-10 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                      className="w-full h-10 px-3 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary placeholder:text-text-placeholder font-['JetBrains_Mono'] focus:outline-none focus:border-accent transition-colors"
                     />
                   </div>
                   <button
                     onClick={() => connectMut.mutate()}
                     disabled={connectMut.isPending || !apiKey}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-black text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
                   >
                     {connectMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
                     Connect
@@ -342,7 +342,7 @@ function MarketTab({
 
               {/* Error message */}
               {connectError && (
-                <p className="text-xs text-[#FF4444]">{connectError}</p>
+                <p className="text-xs text-red">{connectError}</p>
               )}
             </div>
           )}
@@ -360,13 +360,13 @@ function VersionInfoCard() {
   });
 
   return (
-    <div className="mt-8 bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#2f2f2f] flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white font-['Space_Grotesk']">Version Info</h3>
+    <div className="mt-8 bg-bg-card border border-border rounded-[10px] overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-text-primary font-['Space_Grotesk']">Version Info</h3>
         <button
           onClick={() => refetch()}
           disabled={versionLoading}
-          className="p-1.5 rounded-md hover:bg-[#141414] text-[#6a6a6a] hover:text-white transition-colors disabled:opacity-40"
+          className="p-1.5 rounded-md hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-colors disabled:opacity-40"
           title="Check for updates"
         >
           <RefreshCw size={14} className={versionLoading ? 'animate-spin' : ''} />
@@ -374,7 +374,7 @@ function VersionInfoCard() {
       </div>
       <div className="px-5 py-4">
         {versionLoading && !versionInfo ? (
-          <div className="flex items-center gap-2 text-[#6a6a6a] text-sm">
+          <div className="flex items-center gap-2 text-text-muted text-sm">
             <Loader2 size={14} className="animate-spin" />
             Checking version...
           </div>
@@ -382,41 +382,41 @@ function VersionInfoCard() {
           <div className="space-y-3">
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <p className="text-[11px] text-[#6a6a6a] mb-1">Current Version</p>
-                <p className="text-sm text-white font-['JetBrains_Mono']">v{versionInfo.current_version}</p>
+                <p className="text-[11px] text-text-muted mb-1">Current Version</p>
+                <p className="text-sm text-text-primary font-['JetBrains_Mono']">v{versionInfo.current_version}</p>
               </div>
               <div className="flex-1">
-                <p className="text-[11px] text-[#6a6a6a] mb-1">Build</p>
-                <p className="text-sm text-[#8a8a8a] font-['JetBrains_Mono']">{versionInfo.build_version}</p>
+                <p className="text-[11px] text-text-muted mb-1">Build</p>
+                <p className="text-sm text-text-secondary font-['JetBrains_Mono']">{versionInfo.build_version}</p>
               </div>
               <div className="flex-1">
-                <p className="text-[11px] text-[#6a6a6a] mb-1">Latest on GitHub</p>
-                <p className="text-sm text-white font-['JetBrains_Mono']">
+                <p className="text-[11px] text-text-muted mb-1">Latest on GitHub</p>
+                <p className="text-sm text-text-primary font-['JetBrains_Mono']">
                   {versionInfo.latest_version ? `v${versionInfo.latest_version}` : 'Unable to check'}
                 </p>
               </div>
             </div>
             {versionInfo.update_available && (
-              <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-[#00D9FF]/5 border border-[#00D9FF]/20 rounded-lg">
-                <span className="text-[11px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#00D9FF]/10 text-[#00D9FF]">
+              <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-accent/5 border border-accent/20 rounded-lg">
+                <span className="text-[11px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-accent/10 text-accent">
                   Update available: v{versionInfo.latest_version}
                 </span>
                 <a
                   href="https://github.com/fxxkrlab/ADMINCHAT_PANEL/releases"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-[#00D9FF] hover:underline flex items-center gap-1 ml-auto"
+                  className="text-[11px] text-accent hover:underline flex items-center gap-1 ml-auto"
                 >
                   View releases <ExternalLink size={11} />
                 </a>
               </div>
             )}
             {!versionInfo.update_available && versionInfo.latest_version && (
-              <p className="text-[11px] text-[#059669] font-['JetBrains_Mono']">You're on the latest version.</p>
+              <p className="text-[11px] text-green font-['JetBrains_Mono']">You're on the latest version.</p>
             )}
           </div>
         ) : (
-          <p className="text-sm text-[#6a6a6a]">Failed to load version info.</p>
+          <p className="text-sm text-text-muted">Failed to load version info.</p>
         )}
       </div>
     </div>
@@ -504,20 +504,20 @@ export default function Settings() {
       <Header title="System Settings" />
       <div className="flex-1 px-8 py-6 overflow-auto">
         {/* Tab navigation */}
-        <div className="flex items-center gap-6 mb-8 border-b border-[#1A1A1A]">
+        <div className="flex items-center gap-6 mb-8 border-b border-border-subtle">
           {allTabs.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
               className={`pb-3 text-sm font-medium transition-colors relative ${
                 activeTab === key
-                  ? 'text-[#00D9FF]'
-                  : 'text-[#6a6a6a] hover:text-white'
+                  ? 'text-accent'
+                  : 'text-text-muted hover:text-text-primary'
               }`}
             >
               {label}
               {activeTab === key && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00D9FF]" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />
               )}
             </button>
           ))}
@@ -525,7 +525,7 @@ export default function Settings() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 text-[#6a6a6a] animate-spin" />
+            <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
           </div>
         ) : (
           <>
@@ -533,27 +533,27 @@ export default function Settings() {
             {activeTab === 'admins' && (
               <div className="space-y-6">
                 {/* Admin table */}
-                <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
+                <div className="bg-bg-card border border-border rounded-[10px] overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-[#2f2f2f]">
-                        <th className="text-left text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Username</th>
-                        <th className="text-left text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Role</th>
-                        <th className="text-left text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Status</th>
-                        <th className="text-right text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Actions</th>
+                      <tr className="border-b border-border">
+                        <th className="text-left text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Username</th>
+                        <th className="text-left text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Role</th>
+                        <th className="text-left text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Status</th>
+                        <th className="text-right text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-[#1A1A1A]">
-                        <td className="px-5 py-3.5 text-sm text-white">admin</td>
+                      <tr className="border-b border-border-subtle">
+                        <td className="px-5 py-3.5 text-sm text-text-primary">admin</td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#00D9FF]/10 text-[#00D9FF]">SUPER ADMIN</span>
+                          <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-accent/10 text-accent">SUPER ADMIN</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#059669]/10 text-[#059669]">ACTIVE</span>
+                          <span className="text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-green/10 text-green">ACTIVE</span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          <button className="px-3 py-1 rounded-md text-xs font-medium text-[#8a8a8a] border border-[#2f2f2f] hover:bg-[#141414] transition-colors">
+                          <button className="px-3 py-1 rounded-md text-xs font-medium text-text-secondary border border-border hover:bg-bg-elevated transition-colors">
                             Edit
                           </button>
                         </td>
@@ -564,39 +564,39 @@ export default function Settings() {
 
                 {/* Bottom settings cards row */}
                 <div className="grid grid-cols-4 gap-4">
-                  <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] p-5">
+                  <div className="bg-bg-card border border-border rounded-[10px] p-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <Shield size={16} className="text-[#00D9FF]" />
-                      <span className="text-[13px] font-medium text-white">Turnstile</span>
+                      <Shield size={16} className="text-accent" />
+                      <span className="text-[13px] font-medium text-text-primary">Turnstile</span>
                     </div>
                     <Toggle
                       value={!!getLocal('turnstile_enabled', false)}
                       onChange={(v) => updateLocal('turnstile_enabled', v)}
                     />
                   </div>
-                  <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] p-5">
+                  <div className="bg-bg-card border border-border rounded-[10px] p-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <Database size={16} className="text-[#00D9FF]" />
-                      <span className="text-[13px] font-medium text-white">Media Cache</span>
+                      <Database size={16} className="text-accent" />
+                      <span className="text-[13px] font-medium text-text-primary">Media Cache</span>
                     </div>
-                    <span className="text-sm text-[#8a8a8a] font-['JetBrains_Mono']">{String(getLocal('media_cache_days', 7))} days</span>
+                    <span className="text-sm text-text-secondary font-['JetBrains_Mono']">{String(getLocal('media_cache_days', 7))} days</span>
                   </div>
-                  <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] p-5">
+                  <div className="bg-bg-card border border-border rounded-[10px] p-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <SettingsIcon size={16} className="text-[#00D9FF]" />
-                      <span className="text-[13px] font-medium text-white">Sessions</span>
+                      <SettingsIcon size={16} className="text-accent" />
+                      <span className="text-[13px] font-medium text-text-primary">Sessions</span>
                     </div>
                     <Toggle
                       value={!!getLocal('auto_assign_enabled', false)}
                       onChange={(v) => updateLocal('auto_assign_enabled', v)}
                     />
                   </div>
-                  <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] p-5">
+                  <div className="bg-bg-card border border-border rounded-[10px] p-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <Clock size={16} className="text-[#00D9FF]" />
-                      <span className="text-[13px] font-medium text-white">Knowledge</span>
+                      <Clock size={16} className="text-accent" />
+                      <span className="text-[13px] font-medium text-text-primary">Knowledge</span>
                     </div>
-                    <span className="text-sm text-[#8a8a8a] font-['JetBrains_Mono']">{String(getLocal('missed_knowledge_update_hour', 3))}:00 UTC</span>
+                    <span className="text-sm text-text-secondary font-['JetBrains_Mono']">{String(getLocal('missed_knowledge_update_hour', 3))}:00 UTC</span>
                   </div>
                 </div>
               </div>
@@ -604,9 +604,9 @@ export default function Settings() {
 
             {/* System tab */}
             {activeTab === 'system' && (
-              <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#2f2f2f]">
-                  <h3 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">General System Settings</h3>
+              <div className="bg-bg-card border border-border rounded-[10px] overflow-hidden">
+                <div className="px-5 py-4 border-b border-border">
+                  <h3 className="text-[18px] font-semibold text-text-primary font-['Space_Grotesk']">General System Settings</h3>
                 </div>
                 <SettingCard
                   label="Auto-Assign Conversations"
@@ -627,7 +627,7 @@ export default function Settings() {
                     onChange={(e) => updateLocal('session_timeout_minutes', Number(e.target.value))}
                     min={5}
                     max={1440}
-                    className="w-24 h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white text-right font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    className="w-24 h-10 px-3.5 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary text-right font-['JetBrains_Mono'] focus:outline-none focus:border-accent transition-colors"
                   />
                 </SettingCard>
                 <SettingCard
@@ -637,7 +637,7 @@ export default function Settings() {
                   <select
                     value={String(getLocal('default_language', 'zh-CN'))}
                     onChange={(e) => updateLocal('default_language', e.target.value)}
-                    className="h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    className="h-10 px-3.5 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent transition-colors"
                   >
                     <option value="zh-CN">Chinese (Simplified)</option>
                     <option value="en">English</option>
@@ -649,9 +649,9 @@ export default function Settings() {
 
             {/* AI Config tab */}
             {activeTab === 'ai' && (
-              <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#2f2f2f]">
-                  <h3 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">AI Configuration</h3>
+              <div className="bg-bg-card border border-border rounded-[10px] overflow-hidden">
+                <div className="px-5 py-4 border-b border-border">
+                  <h3 className="text-[18px] font-semibold text-text-primary font-['Space_Grotesk']">AI Configuration</h3>
                 </div>
                 <SettingCard
                   label="Turnstile Enabled"
@@ -671,7 +671,7 @@ export default function Settings() {
                     value={String(getLocal('turnstile_site_key', ''))}
                     onChange={(e) => updateLocal('turnstile_site_key', e.target.value)}
                     placeholder="0x..."
-                    className="w-64 h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    className="w-64 h-10 px-3.5 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary placeholder:text-text-placeholder font-['JetBrains_Mono'] focus:outline-none focus:border-accent transition-colors"
                   />
                 </SettingCard>
               </div>
@@ -682,9 +682,9 @@ export default function Settings() {
 
             {/* Permissions tab */}
             {activeTab === 'permissions' && (
-              <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#2f2f2f]">
-                  <h3 className="text-[18px] font-semibold text-white font-['Space_Grotesk']">Permissions</h3>
+              <div className="bg-bg-card border border-border rounded-[10px] overflow-hidden">
+                <div className="px-5 py-4 border-b border-border">
+                  <h3 className="text-[18px] font-semibold text-text-primary font-['Space_Grotesk']">Permissions</h3>
                 </div>
                 <SettingCard
                   label="Media Cache TTL (days)"
@@ -696,7 +696,7 @@ export default function Settings() {
                     onChange={(e) => updateLocal('media_cache_days', Number(e.target.value))}
                     min={1}
                     max={90}
-                    className="w-24 h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white text-right font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    className="w-24 h-10 px-3.5 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary text-right font-['JetBrains_Mono'] focus:outline-none focus:border-accent transition-colors"
                   />
                 </SettingCard>
                 <SettingCard
@@ -709,7 +709,7 @@ export default function Settings() {
                     onChange={(e) => updateLocal('missed_knowledge_update_hour', Number(e.target.value))}
                     min={0}
                     max={23}
-                    className="w-24 h-10 px-3.5 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white text-right font-['JetBrains_Mono'] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                    className="w-24 h-10 px-3.5 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary text-right font-['JetBrains_Mono'] focus:outline-none focus:border-accent transition-colors"
                   />
                 </SettingCard>
               </div>
@@ -732,7 +732,7 @@ export default function Settings() {
               <button
                 onClick={handleSave}
                 disabled={!hasChanges || saveMutation.isPending}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-30"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-30"
               >
                 {saveMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -744,10 +744,10 @@ export default function Settings() {
             </div>
 
             {saveMutation.isSuccess && (
-              <p className="mt-3 text-xs text-[#059669] text-right">Settings saved successfully.</p>
+              <p className="mt-3 text-xs text-green text-right">Settings saved successfully.</p>
             )}
             {saveMutation.isError && (
-              <p className="mt-3 text-xs text-[#FF4444] text-right">
+              <p className="mt-3 text-xs text-red text-right">
                 Failed to save: {(saveMutation.error as Error)?.message || 'Unknown error'}
               </p>
             )}

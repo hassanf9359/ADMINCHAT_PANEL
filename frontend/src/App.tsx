@@ -24,14 +24,14 @@ class ErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center h-screen bg-[#0C0C0C]">
+        <div className="flex items-center justify-center h-screen bg-bg-page">
           <div className="flex flex-col items-center gap-4 max-w-md text-center">
-            <div className="text-[#FF4444] text-4xl">!</div>
-            <h2 className="text-white text-lg font-semibold">Something went wrong</h2>
-            <p className="text-[#8a8a8a] text-sm">{this.state.error?.message}</p>
+            <div className="text-red text-4xl">!</div>
+            <h2 className="text-text-primary text-lg font-semibold">Something went wrong</h2>
+            <p className="text-text-secondary text-sm">{this.state.error?.message}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 rounded-md bg-[#00D9FF]/10 text-[#00D9FF] text-sm hover:bg-[#00D9FF]/20 transition-colors"
+              className="px-4 py-2 rounded-md bg-accent/10 text-accent text-sm hover:bg-accent/20 transition-colors"
             >
               Reload Page
             </button>
@@ -66,8 +66,8 @@ function PageLoader() {
   return (
     <div className="flex items-center justify-center h-full">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-[#00D9FF] border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-[#6a6a6a]">Loading...</span>
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm text-text-muted">Loading...</span>
       </div>
     </div>
   );
@@ -130,7 +130,7 @@ function AppRoutes() {
         {/* Catch-all for /p/* while plugin data loads (suppresses "No routes matched" warning) */}
         <Route path="/p/*" element={
           <div className="flex items-center justify-center h-full">
-            <div className="w-6 h-6 border-2 border-[#00D9FF] border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
           </div>
         } />
       </Route>

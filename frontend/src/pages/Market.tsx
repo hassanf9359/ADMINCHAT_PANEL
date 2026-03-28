@@ -67,10 +67,10 @@ function formatPrice(cents: number, currency: string, model: string): string {
 
 function statusBadgeClasses(status: InstalledPlugin['status']): string {
   switch (status) {
-    case 'active': return 'bg-[#059669]/10 text-[#059669]';
-    case 'disabled': return 'bg-[#FF8800]/10 text-[#FF8800]';
-    case 'error': return 'bg-[#FF4444]/10 text-[#FF4444]';
-    default: return 'bg-[#8a8a8a]/10 text-[#8a8a8a]';
+    case 'active': return 'bg-green/10 text-green';
+    case 'disabled': return 'bg-orange/10 text-orange';
+    case 'error': return 'bg-red/10 text-red';
+    default: return 'bg-text-secondary/10 text-text-secondary';
   }
 }
 
@@ -130,21 +130,21 @@ function PluginCard({
 
   return (
     <div
-      className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] p-5 hover:border-[#4a4a4a] transition-colors cursor-pointer flex flex-col"
+      className="bg-bg-card border border-border rounded-[10px] p-5 hover:border-text-placeholder transition-colors cursor-pointer flex flex-col"
       onClick={onClick}
     >
       <div className="flex items-start gap-3 mb-3">
         <PluginIcon icon={plugin.icon} color={plugin.color} name={plugin.name} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-white truncate">{plugin.name}</h3>
+            <h3 className="text-sm font-semibold text-text-primary truncate">{plugin.name}</h3>
             {plugin.author?.verified && (
-              <Check size={12} className="text-[#00D9FF] shrink-0" />
+              <Check size={12} className="text-accent shrink-0" />
             )}
           </div>
           <span
             className={`text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded mt-1 inline-block ${
-              isFree ? 'bg-[#059669]/10 text-[#059669]' : 'bg-[#FF8800]/10 text-[#FF8800]'
+              isFree ? 'bg-green/10 text-green' : 'bg-orange/10 text-orange'
             }`}
           >
             {formatPrice(plugin.price_cents, plugin.currency, plugin.pricing_model)}
@@ -152,28 +152,28 @@ function PluginCard({
         </div>
       </div>
 
-      <p className="text-xs text-[#8a8a8a] mb-3 line-clamp-2 flex-1">{plugin.description}</p>
+      <p className="text-xs text-text-secondary mb-3 line-clamp-2 flex-1">{plugin.description}</p>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-[11px] text-[#6a6a6a]">
+        <div className="flex items-center gap-3 text-[11px] text-text-muted">
           <span className="flex items-center gap-1">
             <Download size={11} />
             {formatDownloads(plugin.download_count)}
           </span>
           <span>by {plugin.author_name || plugin.author?.display_name || plugin.author?.username || 'Unknown'}</span>
         </div>
-        {latestVersion && <span className="text-[10px] text-[#6a6a6a] font-['JetBrains_Mono']">v{latestVersion}</span>}
+        {latestVersion && <span className="text-[10px] text-text-muted font-['JetBrains_Mono']">v{latestVersion}</span>}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-[#1A1A1A]">
+      <div className="mt-3 pt-3 border-t border-border-subtle">
         {isInstalled && !hasUpdate ? (
           <div className="flex items-center gap-2">
             <div className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium ${
               installedStatus === 'active'
-                ? 'bg-[#059669]/10 text-[#059669]'
+                ? 'bg-green/10 text-green'
                 : installedStatus === 'error'
-                  ? 'bg-[#FF4444]/10 text-[#FF4444]'
-                  : 'bg-[#FF8800]/10 text-[#FF8800]'
+                  ? 'bg-red/10 text-red'
+                  : 'bg-orange/10 text-orange'
             }`}>
               {installedStatus === 'active' ? <Power size={14} /> : installedStatus === 'error' ? <XCircle size={14} /> : <PowerOff size={14} />}
               {installedStatus === 'active' ? 'Active' : installedStatus === 'error' ? 'Error' : 'Inactive'}
@@ -184,8 +184,8 @@ function PluginCard({
                 disabled={toggling}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-40 ${
                   installedStatus === 'active'
-                    ? 'text-[#FF8800] hover:bg-[#FF8800]/10'
-                    : 'text-[#059669] hover:bg-[#059669]/10'
+                    ? 'text-orange hover:bg-orange/10'
+                    : 'text-green hover:bg-green/10'
                 }`}
                 title={installedStatus === 'active' ? 'Deactivate' : 'Activate'}
               >
@@ -197,7 +197,7 @@ function PluginCard({
           <button
             onClick={(e) => { e.stopPropagation(); onInstall(); }}
             disabled={installing}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-[#FF8800] text-black text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-orange text-black text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
           >
             {installing ? <Loader2 size={14} className="animate-spin" /> : <ArrowUpCircle size={14} />}
             Update Available
@@ -206,7 +206,7 @@ function PluginCard({
           <button
             onClick={(e) => { e.stopPropagation(); onInstall(); }}
             disabled={installing}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-[#00D9FF] text-black text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-accent text-black text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
           >
             {installing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             Install
@@ -251,32 +251,32 @@ function PluginDetailModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
+        className="bg-bg-card border border-border rounded-[10px] w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start gap-4 px-6 py-5 border-b border-[#2f2f2f]">
+        <div className="flex items-start gap-4 px-6 py-5 border-b border-border">
           <PluginIcon icon={plugin.icon} color={plugin.color} name={plugin.name} size={48} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-white font-['Space_Grotesk']">{plugin.name}</h2>
-              {plugin.author?.verified && <Check size={14} className="text-[#00D9FF]" />}
+              <h2 className="text-lg font-semibold text-text-primary font-['Space_Grotesk']">{plugin.name}</h2>
+              {plugin.author?.verified && <Check size={14} className="text-accent" />}
               <span
                 className={`text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded ${
-                  isFree ? 'bg-[#059669]/10 text-[#059669]' : 'bg-[#FF8800]/10 text-[#FF8800]'
+                  isFree ? 'bg-green/10 text-green' : 'bg-orange/10 text-orange'
                 }`}
               >
                 {formatPrice(plugin.price_cents, plugin.currency, plugin.pricing_model)}
               </span>
             </div>
-            <p className="text-xs text-[#8a8a8a] mt-1">{plugin.description}</p>
-            <div className="flex items-center gap-4 mt-2 text-[11px] text-[#6a6a6a]">
+            <p className="text-xs text-text-secondary mt-1">{plugin.description}</p>
+            <div className="flex items-center gap-4 mt-2 text-[11px] text-text-muted">
               <span className="flex items-center gap-1"><Download size={11} /> {formatDownloads(plugin.download_count)}</span>
               <span>by {plugin.author_name || plugin.author?.display_name || plugin.author?.username || 'Unknown'}</span>
               {latestVersion && <span className="font-['JetBrains_Mono']">v{latestVersion}</span>}
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-[#141414] text-[#6a6a6a] hover:text-white transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -287,7 +287,7 @@ function PluginDetailModal({
           {plugin.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {plugin.tags.map((tag) => (
-                <span key={tag} className="text-[10px] font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#141414] text-[#8a8a8a] border border-[#2f2f2f]">
+                <span key={tag} className="text-[10px] font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-bg-elevated text-text-secondary border border-border">
                   {tag}
                 </span>
               ))}
@@ -296,7 +296,7 @@ function PluginDetailModal({
 
           {/* Long description */}
           {plugin.long_description && (
-            <div className="text-sm text-[#8a8a8a] whitespace-pre-wrap leading-relaxed">
+            <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
               {plugin.long_description}
             </div>
           )}
@@ -304,14 +304,14 @@ function PluginDetailModal({
           {/* Screenshots */}
           {plugin.screenshots && plugin.screenshots.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Screenshots</h4>
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Screenshots</h4>
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {plugin.screenshots.map((url, i) => (
                   <img
                     key={i}
                     src={url}
                     alt={`Screenshot ${i + 1}`}
-                    className="h-40 rounded-lg border border-[#2f2f2f] object-cover shrink-0"
+                    className="h-40 rounded-lg border border-border object-cover shrink-0"
                   />
                 ))}
               </div>
@@ -321,17 +321,17 @@ function PluginDetailModal({
           {/* Version History */}
           {plugin.versions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Version History</h4>
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Version History</h4>
               <div className="space-y-2">
                 {plugin.versions.slice(0, 5).map((v) => (
-                  <div key={v.version} className="flex items-start gap-3 px-4 py-3 bg-[#141414] rounded-lg">
-                    <span className="text-xs font-['JetBrains_Mono'] text-white shrink-0">v{v.version}</span>
+                  <div key={v.version} className="flex items-start gap-3 px-4 py-3 bg-bg-elevated rounded-lg">
+                    <span className="text-xs font-['JetBrains_Mono'] text-text-primary shrink-0">v{v.version}</span>
                     <div className="flex-1 min-w-0">
-                      {v.changelog && <p className="text-xs text-[#8a8a8a]">{v.changelog}</p>}
-                      <p className="text-[10px] text-[#4a4a4a] mt-1">{new Date(v.published_at).toLocaleDateString()}</p>
+                      {v.changelog && <p className="text-xs text-text-secondary">{v.changelog}</p>}
+                      <p className="text-[10px] text-text-placeholder mt-1">{new Date(v.published_at).toLocaleDateString()}</p>
                     </div>
                     {v.min_panel_version && (
-                      <span className="text-[10px] font-['JetBrains_Mono'] text-[#6a6a6a]">Panel {'>'}= v{v.min_panel_version}</span>
+                      <span className="text-[10px] font-['JetBrains_Mono'] text-text-muted">Panel {'>'}= v{v.min_panel_version}</span>
                     )}
                   </div>
                 ))}
@@ -341,11 +341,11 @@ function PluginDetailModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[#2f2f2f] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
           {isInstalled && onUninstall && (
             <button
               onClick={onUninstall}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-[#FF4444] hover:bg-[#FF4444]/10 text-sm font-medium transition-colors mr-auto"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-red hover:bg-red/10 text-sm font-medium transition-colors mr-auto"
             >
               <Trash2 size={16} />
               Uninstall
@@ -357,8 +357,8 @@ function PluginDetailModal({
               disabled={toggling}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-40 ${
                 installedStatus === 'active'
-                  ? 'bg-[#FF8800]/10 text-[#FF8800] hover:bg-[#FF8800]/20'
-                  : 'bg-[#059669]/10 text-[#059669] hover:bg-[#059669]/20'
+                  ? 'bg-orange/10 text-orange hover:bg-orange/20'
+                  : 'bg-green/10 text-green hover:bg-green/20'
               }`}
             >
               {toggling ? <Loader2 size={16} className="animate-spin" /> : installedStatus === 'active' ? <PowerOff size={16} /> : <Power size={16} />}
@@ -368,10 +368,10 @@ function PluginDetailModal({
           {isInstalled && !hasUpdate ? (
             <div className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium ${
               installedStatus === 'active'
-                ? 'bg-[#059669]/10 text-[#059669]'
+                ? 'bg-green/10 text-green'
                 : installedStatus === 'error'
-                  ? 'bg-[#FF4444]/10 text-[#FF4444]'
-                  : 'bg-[#FF8800]/10 text-[#FF8800]'
+                  ? 'bg-red/10 text-red'
+                  : 'bg-orange/10 text-orange'
             }`}>
               {installedStatus === 'active' ? <Power size={16} /> : installedStatus === 'error' ? <XCircle size={16} /> : <PowerOff size={16} />}
               {installedStatus === 'active' ? 'Active' : installedStatus === 'error' ? 'Error' : 'Inactive'}
@@ -380,7 +380,7 @@ function PluginDetailModal({
             <button
               onClick={onInstall}
               disabled={installing}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-[#FF8800] text-black text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-orange text-black text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {installing ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpCircle size={16} />}
               Update to v{latestVersion}
@@ -389,7 +389,7 @@ function PluginDetailModal({
             <button
               onClick={onInstall}
               disabled={installing}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-[#00D9FF] text-black text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-accent text-black text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {installing ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               Install Plugin
@@ -416,39 +416,39 @@ function UninstallDialog({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onCancel}>
       <div
-        className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] w-full max-w-md p-6"
+        className="bg-bg-card border border-border rounded-[10px] w-full max-w-md p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-[#FF4444]/10">
-            <AlertTriangle size={20} className="text-[#FF4444]" />
+          <div className="p-2 rounded-lg bg-red/10">
+            <AlertTriangle size={20} className="text-red" />
           </div>
-          <h3 className="text-base font-semibold text-white font-['Space_Grotesk']">Uninstall Plugin</h3>
+          <h3 className="text-base font-semibold text-text-primary font-['Space_Grotesk']">Uninstall Plugin</h3>
         </div>
-        <p className="text-sm text-[#8a8a8a] mb-4">
-          Are you sure you want to uninstall <span className="text-white font-medium">{pluginName}</span>? This action cannot be undone.
+        <p className="text-sm text-text-secondary mb-4">
+          Are you sure you want to uninstall <span className="text-text-primary font-medium">{pluginName}</span>? This action cannot be undone.
         </p>
         <label className="flex items-center gap-2.5 mb-5 cursor-pointer group">
           <input
             type="checkbox"
             checked={dropTables}
             onChange={(e) => setDropTables(e.target.checked)}
-            className="w-4 h-4 rounded border-[#2f2f2f] bg-[#141414] text-[#FF4444] focus:ring-[#FF4444]/30 cursor-pointer"
+            className="w-4 h-4 rounded border-border bg-bg-elevated text-red focus:ring-red/30 cursor-pointer"
           />
-          <span className="text-sm text-[#8a8a8a] group-hover:text-white transition-colors">
+          <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
             Delete all plugin data (database tables)
           </span>
         </label>
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-md text-sm text-[#8a8a8a] hover:text-white hover:bg-[#141414] transition-colors"
+            className="px-4 py-2 rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(dropTables)}
-            className="px-4 py-2 rounded-md bg-[#FF4444] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            className="px-4 py-2 rounded-md bg-red text-white text-sm font-medium hover:opacity-90 transition-opacity"
           >
             Uninstall
           </button>
@@ -478,23 +478,23 @@ function InstalledTab({
 
   if (plugins.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-[#6a6a6a]">
+      <div className="flex flex-col items-center justify-center py-20 text-text-muted">
         <Download size={40} className="mb-3 opacity-40" />
         <p className="text-sm">No plugins installed yet.</p>
-        <p className="text-xs text-[#4a4a4a] mt-1">Browse the Market tab to find and install plugins.</p>
+        <p className="text-xs text-text-placeholder mt-1">Browse the Market tab to find and install plugins.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0A0A0A] border border-[#2f2f2f] rounded-[10px] overflow-hidden">
+    <div className="bg-bg-card border border-border rounded-[10px] overflow-hidden">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-[#2f2f2f]">
-            <th className="text-left text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Plugin</th>
-            <th className="text-left text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Version</th>
-            <th className="text-left text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Status</th>
-            <th className="text-right text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Actions</th>
+          <tr className="border-b border-border">
+            <th className="text-left text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Plugin</th>
+            <th className="text-left text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Version</th>
+            <th className="text-left text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Status</th>
+            <th className="text-right text-[11px] font-semibold text-text-muted uppercase tracking-[0.5px] font-['JetBrains_Mono'] px-5 py-3">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -503,20 +503,20 @@ function InstalledTab({
             const isLoading = actionLoading === plugin.plugin_id;
             const hasSettings = (plugin.manifest.frontend?.settings_tabs?.length ?? 0) > 0;
             return (
-              <tr key={plugin.plugin_id} className="border-b border-[#1A1A1A] last:border-0">
+              <tr key={plugin.plugin_id} className="border-b border-border-subtle last:border-0">
                 <td className="px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <PluginIcon icon={plugin.manifest.icon} color={plugin.manifest.color} name={plugin.name} size={32} />
                     <div>
-                      <p className="text-sm text-white font-medium">{plugin.name}</p>
-                      <p className="text-[11px] text-[#6a6a6a]">{plugin.manifest.description || ''}</p>
+                      <p className="text-sm text-text-primary font-medium">{plugin.name}</p>
+                      <p className="text-[11px] text-text-muted">{plugin.manifest.description || ''}</p>
                     </div>
                   </div>
                 </td>
                 <td className="px-5 py-3.5">
-                  <span className="text-sm text-white font-['JetBrains_Mono']">v{plugin.version}</span>
+                  <span className="text-sm text-text-primary font-['JetBrains_Mono']">v{plugin.version}</span>
                   {update && update.compatible && (
-                    <span className="ml-2 text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-[#FF8800]/10 text-[#FF8800]">
+                    <span className="ml-2 text-[10px] font-semibold font-['JetBrains_Mono'] px-2 py-0.5 rounded bg-orange/10 text-orange">
                       v{update.latest} available
                     </span>
                   )}
@@ -532,7 +532,7 @@ function InstalledTab({
                       <button
                         onClick={() => onAction(plugin.plugin_id, 'update')}
                         disabled={isLoading}
-                        className="p-1.5 rounded-md text-[#FF8800] hover:bg-[#FF8800]/10 transition-colors disabled:opacity-40"
+                        className="p-1.5 rounded-md text-orange hover:bg-orange/10 transition-colors disabled:opacity-40"
                         title="Update"
                       >
                         <ArrowUpCircle size={16} />
@@ -541,7 +541,7 @@ function InstalledTab({
                     {hasSettings && (
                       <button
                         onClick={() => onOpenSettings(plugin.plugin_id)}
-                        className="p-1.5 rounded-md text-[#8a8a8a] hover:text-[#00D9FF] hover:bg-[#00D9FF]/10 transition-colors"
+                        className="p-1.5 rounded-md text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors"
                         title="Settings"
                       >
                         <Settings size={16} />
@@ -551,7 +551,7 @@ function InstalledTab({
                       <button
                         onClick={() => onAction(plugin.plugin_id, 'deactivate')}
                         disabled={isLoading}
-                        className="p-1.5 rounded-md text-[#FF8800] hover:bg-[#FF8800]/10 transition-colors disabled:opacity-40"
+                        className="p-1.5 rounded-md text-orange hover:bg-orange/10 transition-colors disabled:opacity-40"
                         title="Deactivate"
                       >
                         <PowerOff size={16} />
@@ -560,7 +560,7 @@ function InstalledTab({
                       <button
                         onClick={() => onAction(plugin.plugin_id, 'activate')}
                         disabled={isLoading}
-                        className="p-1.5 rounded-md text-[#059669] hover:bg-[#059669]/10 transition-colors disabled:opacity-40"
+                        className="p-1.5 rounded-md text-green hover:bg-green/10 transition-colors disabled:opacity-40"
                         title="Activate"
                       >
                         <Power size={16} />
@@ -569,12 +569,12 @@ function InstalledTab({
                     <button
                       onClick={() => onUninstall(plugin)}
                       disabled={isLoading}
-                      className="p-1.5 rounded-md text-[#FF4444] hover:bg-[#FF4444]/10 transition-colors disabled:opacity-40"
+                      className="p-1.5 rounded-md text-red hover:bg-red/10 transition-colors disabled:opacity-40"
                       title="Uninstall"
                     >
                       <Trash2 size={16} />
                     </button>
-                    {isLoading && <Loader2 size={14} className="animate-spin text-[#6a6a6a]" />}
+                    {isLoading && <Loader2 size={14} className="animate-spin text-text-muted" />}
                   </div>
                 </td>
               </tr>
@@ -605,8 +605,8 @@ function Notification({
     <div
       className={`fixed top-6 right-6 z-[200] flex items-center gap-2.5 px-4 py-3 rounded-lg border shadow-lg animate-in slide-in-from-top-2 ${
         type === 'success'
-          ? 'bg-[#059669]/10 border-[#059669]/30 text-[#059669]'
-          : 'bg-[#FF4444]/10 border-[#FF4444]/30 text-[#FF4444]'
+          ? 'bg-green/10 border-green/30 text-green'
+          : 'bg-red/10 border-red/30 text-red'
       }`}
     >
       {type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
@@ -770,27 +770,27 @@ export default function Market() {
       <Header title="Plugin Market" />
       <div className="flex-1 px-8 py-6 overflow-auto">
         {/* Tab navigation */}
-        <div className="flex items-center gap-6 mb-6 border-b border-[#1A1A1A]">
+        <div className="flex items-center gap-6 mb-6 border-b border-border-subtle">
           {(['browse', 'installed'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`pb-3 text-sm font-medium transition-colors relative capitalize ${
                 activeTab === tab
-                  ? 'text-[#00D9FF]'
-                  : 'text-[#6a6a6a] hover:text-white'
+                  ? 'text-accent'
+                  : 'text-text-muted hover:text-text-primary'
               }`}
             >
               {tab === 'browse' ? 'Browse' : `Installed (${installedPlugins.length})`}
               {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00D9FF]" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />
               )}
             </button>
           ))}
           {activeTab === 'installed' && (
             <button
               onClick={() => queryClient.invalidateQueries({ queryKey: ['market-updates'] })}
-              className="ml-auto pb-3 flex items-center gap-1.5 text-xs text-[#6a6a6a] hover:text-white transition-colors"
+              className="ml-auto pb-3 flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors"
             >
               <RefreshCw size={12} />
               Check for Updates
@@ -800,14 +800,14 @@ export default function Market() {
 
         {/* Market not connected banner */}
         {!isMarketConnected && marketStatus && (
-          <div className="flex items-center gap-3 px-4 py-3 mb-5 rounded-lg bg-[#FF8800]/10 border border-[#FF8800]/20">
-            <AlertTriangle size={16} className="text-[#FF8800] shrink-0" />
-            <span className="text-sm text-[#FF8800]">
+          <div className="flex items-center gap-3 px-4 py-3 mb-5 rounded-lg bg-orange/10 border border-orange/20">
+            <AlertTriangle size={16} className="text-orange shrink-0" />
+            <span className="text-sm text-orange">
               Market not connected. Connect to install plugins.
             </span>
             <button
               onClick={() => navigate('/settings', { state: { tab: 'market' } })}
-              className="ml-auto px-3 py-1 rounded-md bg-[#FF8800] text-black text-xs font-medium hover:opacity-90 transition-opacity"
+              className="ml-auto px-3 py-1 rounded-md bg-orange text-black text-xs font-medium hover:opacity-90 transition-opacity"
             >
               Go to Settings
             </button>
@@ -820,20 +820,20 @@ export default function Market() {
             {/* Search + Filters */}
             <div className="flex items-center gap-3 mb-5">
               <div className="relative flex-1 max-w-md">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4a4a4a]" />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-placeholder" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search plugins..."
-                  className="w-full h-10 pl-10 pr-4 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF] transition-colors"
+                  className="w-full h-10 pl-10 pr-4 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent transition-colors"
                 />
               </div>
               <div className="relative">
                 <select
                   value={pricing}
                   onChange={(e) => setPricing(e.target.value as typeof pricing)}
-                  className="appearance-none h-10 pl-3 pr-8 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white focus:outline-none focus:border-[#00D9FF] transition-colors cursor-pointer"
+                  className="appearance-none h-10 pl-3 pr-8 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
                 >
                   {PRICING_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
@@ -841,13 +841,13 @@ export default function Market() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6a6a6a] pointer-events-none" />
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               </div>
               <div className="relative">
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value as typeof sort)}
-                  className="appearance-none h-10 pl-3 pr-8 bg-[#141414] border border-[#2f2f2f] rounded-lg text-sm text-white focus:outline-none focus:border-[#00D9FF] transition-colors cursor-pointer"
+                  className="appearance-none h-10 pl-3 pr-8 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
                 >
                   {SORT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -855,7 +855,7 @@ export default function Market() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6a6a6a] pointer-events-none" />
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               </div>
             </div>
 
@@ -867,8 +867,8 @@ export default function Market() {
                   onClick={() => setCategory(cat)}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     category === cat
-                      ? 'bg-[#00D9FF]/10 text-[#00D9FF] border border-[#00D9FF]/30'
-                      : 'bg-[#141414] text-[#8a8a8a] border border-[#2f2f2f] hover:text-white hover:border-[#4a4a4a]'
+                      ? 'bg-accent/10 text-accent border border-accent/30'
+                      : 'bg-bg-elevated text-text-secondary border border-border hover:text-text-primary hover:border-text-placeholder'
                   }`}
                 >
                   {cat}
@@ -879,13 +879,13 @@ export default function Market() {
             {/* Plugin grid */}
             {browseLoading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-6 h-6 text-[#6a6a6a] animate-spin" />
+                <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
               </div>
             ) : marketPlugins.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-[#6a6a6a]">
+              <div className="flex flex-col items-center justify-center py-20 text-text-muted">
                 <Search size={40} className="mb-3 opacity-40" />
                 <p className="text-sm">No plugins found.</p>
-                <p className="text-xs text-[#4a4a4a] mt-1">Try adjusting your search or filters.</p>
+                <p className="text-xs text-text-placeholder mt-1">Try adjusting your search or filters.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
@@ -926,7 +926,7 @@ export default function Market() {
 
             {/* Pagination info */}
             {browseData && browseData.total > 0 && (
-              <div className="mt-4 text-center text-[11px] text-[#4a4a4a] font-['JetBrains_Mono']">
+              <div className="mt-4 text-center text-[11px] text-text-placeholder font-['JetBrains_Mono']">
                 Showing {marketPlugins.length} of {browseData.total} plugins
               </div>
             )}

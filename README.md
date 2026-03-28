@@ -370,6 +370,11 @@ docker network connect your-shared-network gte-embedding
 - **角色权限系统** &mdash; Super Admin / Admin / Agent 三级权限，细粒度权限控制
 - **操作审计日志** &mdash; 关键操作自动记录，可追溯
 
+### 主题与界面
+- **双主题系统** &mdash; 暗色（默认）+ 亮色主题，所有颜色基于 CSS 变量，一键切换，记忆偏好
+- **毛玻璃效果** &mdash; 侧栏/顶栏/卡片支持 `backdrop-blur` 毛玻璃效果（亮色主题下更明显）
+- **流动渐变背景** &mdash; 亮色主题专属动态渐变光斑背景
+
 ### 部署与运维
 - **Docker 一键部署** &mdash; `docker compose up` 即可运行，支持 GHCR 镜像发布
 - **全局 Error Boundary** &mdash; 前端运行时错误优雅降级，不影响整体系统可用性

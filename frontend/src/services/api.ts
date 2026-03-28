@@ -74,9 +74,11 @@ api.interceptors.response.use(
 
         const newToken = useAuthStore.getState().token;
         if (!newToken) {
-          // Refresh failed, redirect to login
+          // Refresh failed, redirect to login (skip if already there)
           processQueue(error);
-          window.location.href = '/login';
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
           return Promise.reject(error);
         }
 
@@ -86,7 +88,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError);
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

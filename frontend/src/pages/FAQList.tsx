@@ -150,15 +150,15 @@ export default function FAQList() {
       <Header title="FAQ Rules" />
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Tree navigation */}
-        <div className="w-64 border-r border-[#2f2f2f] bg-[#080808] flex flex-col overflow-y-auto shrink-0">
-          <div className="p-4 border-b border-[#2f2f2f]">
+        <div className="w-64 border-r border-border bg-bg-sidebar flex flex-col overflow-y-auto shrink-0">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">
                 FAQ Groups
               </span>
               <button
                 onClick={() => setShowAddGroup(true)}
-                className="p-1 rounded hover:bg-[#141414] text-[#6a6a6a] hover:text-[#00D9FF] transition-colors"
+                className="p-1 rounded hover:bg-bg-elevated text-text-muted hover:text-accent transition-colors"
                 title="New Group"
               >
                 <Plus size={14} />
@@ -169,7 +169,7 @@ export default function FAQList() {
             <button
               onClick={() => setTreeSelection({ type: 'all' })}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
-                treeSelection.type === 'all' ? 'bg-[#00D9FF]/10 text-[#00D9FF]' : 'text-[#8a8a8a] hover:bg-[#141414] hover:text-white'
+                treeSelection.type === 'all' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
               }`}
             >
               All Rules
@@ -179,7 +179,7 @@ export default function FAQList() {
             <button
               onClick={() => setTreeSelection({ type: 'uncategorized' })}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
-                treeSelection.type === 'uncategorized' ? 'bg-[#00D9FF]/10 text-[#00D9FF]' : 'text-[#6a6a6a] hover:bg-[#141414] hover:text-white'
+                treeSelection.type === 'uncategorized' ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-bg-elevated hover:text-text-primary'
               }`}
             >
               Uncategorized
@@ -188,19 +188,19 @@ export default function FAQList() {
 
           {/* Add group form */}
           {showAddGroup && (
-            <div className="p-3 border-b border-[#2f2f2f]">
+            <div className="p-3 border-b border-border">
               <input
                 type="text"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
                 placeholder="Group name"
-                className="w-full h-8 px-2.5 mb-2 bg-[#141414] border border-[#2f2f2f] rounded text-xs text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF]"
+                className="w-full h-8 px-2.5 mb-2 bg-bg-elevated border border-border rounded text-xs text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent"
                 autoFocus
               />
               <select
                 value={newGroupBotGroupId ?? ''}
                 onChange={(e) => setNewGroupBotGroupId(e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full h-8 px-2 mb-2 bg-[#141414] border border-[#2f2f2f] rounded text-xs text-white focus:outline-none focus:border-[#00D9FF] appearance-none"
+                className="w-full h-8 px-2 mb-2 bg-bg-elevated border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent appearance-none"
               >
                 <option value="">No bot group</option>
                 {botGroups.map(bg => <option key={bg.id} value={bg.id}>{bg.name}</option>)}
@@ -208,13 +208,13 @@ export default function FAQList() {
               <div className="flex gap-1.5">
                 <button
                   onClick={() => { setShowAddGroup(false); setNewGroupName(''); }}
-                  className="flex-1 h-7 text-[10px] text-[#8a8a8a] hover:text-white rounded border border-[#2f2f2f]"
+                  className="flex-1 h-7 text-[10px] text-text-secondary hover:text-text-primary rounded border border-border"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => newGroupName.trim() && createGroupMutation.mutate({ name: newGroupName.trim(), bot_group_id: newGroupBotGroupId ?? null })}
-                  className="flex-1 h-7 text-[10px] text-black bg-[#00D9FF] rounded font-medium"
+                  className="flex-1 h-7 text-[10px] text-black bg-accent rounded font-medium"
                 >
                   Create
                 </button>
@@ -232,25 +232,25 @@ export default function FAQList() {
                   <div className="flex items-center group">
                     <button
                       onClick={() => toggleGroupExpand(group.id)}
-                      className="p-0.5 text-[#6a6a6a]"
+                      className="p-0.5 text-text-muted"
                     >
                       {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     </button>
                     <button
                       onClick={() => setTreeSelection({ type: 'group', id: group.id })}
                       className={`flex-1 text-left px-2 py-1.5 rounded text-sm truncate transition-colors ${
-                        isGroupSelected ? 'bg-[#8B5CF6]/10 text-[#8B5CF6]' : 'text-white hover:bg-[#141414]'
+                        isGroupSelected ? 'bg-purple/10 text-purple' : 'text-text-primary hover:bg-bg-elevated'
                       }`}
                     >
                       <FolderTree size={12} className="inline mr-1.5 opacity-50" />
                       {group.name}
                       {group.bot_group_name && (
-                        <span className="ml-1 text-[9px] text-[#8B5CF6] opacity-60">{group.bot_group_name}</span>
+                        <span className="ml-1 text-[9px] text-purple opacity-60">{group.bot_group_name}</span>
                       )}
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setShowAddCategory(group.id); setNewCatName(''); }}
-                      className="p-0.5 opacity-0 group-hover:opacity-100 text-[#6a6a6a] hover:text-[#00D9FF] transition-all"
+                      className="p-0.5 opacity-0 group-hover:opacity-100 text-text-muted hover:text-accent transition-all"
                       title="Add category"
                     >
                       <Plus size={12} />
@@ -261,7 +261,7 @@ export default function FAQList() {
                         if (window.confirm(`Delete FAQ group "${group.name}" and unlink all its categories?`))
                           deleteGroupMutation.mutate(group.id);
                       }}
-                      className="p-0.5 opacity-0 group-hover:opacity-100 text-[#6a6a6a] hover:text-[#FF4444] transition-all"
+                      className="p-0.5 opacity-0 group-hover:opacity-100 text-text-muted hover:text-red transition-all"
                       title="Delete group"
                     >
                       <Trash2 size={10} />
@@ -270,28 +270,28 @@ export default function FAQList() {
 
                   {/* Add category form */}
                   {showAddCategory === group.id && (
-                    <div className="ml-5 mt-1 mb-2 p-2 bg-[#0A0A0A] rounded border border-[#2f2f2f]">
+                    <div className="ml-5 mt-1 mb-2 p-2 bg-bg-card rounded border border-border">
                       <input
                         type="text"
                         value={newCatName}
                         onChange={(e) => setNewCatName(e.target.value)}
                         placeholder="Category name"
-                        className="w-full h-7 px-2 mb-1.5 bg-[#141414] border border-[#2f2f2f] rounded text-xs text-white placeholder:text-[#4a4a4a] focus:outline-none focus:border-[#00D9FF]"
+                        className="w-full h-7 px-2 mb-1.5 bg-bg-elevated border border-border rounded text-xs text-text-primary placeholder:text-text-placeholder focus:outline-none focus:border-accent"
                         autoFocus
                       />
                       <select
                         value={newCatBotGroupId ?? ''}
                         onChange={(e) => setNewCatBotGroupId(e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full h-7 px-2 mb-1.5 bg-[#141414] border border-[#2f2f2f] rounded text-xs text-white focus:outline-none focus:border-[#00D9FF] appearance-none"
+                        className="w-full h-7 px-2 mb-1.5 bg-bg-elevated border border-border rounded text-xs text-text-primary focus:outline-none focus:border-accent appearance-none"
                       >
                         <option value="">Inherit bot group</option>
                         {botGroups.map(bg => <option key={bg.id} value={bg.id}>{bg.name}</option>)}
                       </select>
                       <div className="flex gap-1">
-                        <button onClick={() => setShowAddCategory(null)} className="flex-1 h-6 text-[10px] text-[#8a8a8a] rounded border border-[#2f2f2f]">Cancel</button>
+                        <button onClick={() => setShowAddCategory(null)} className="flex-1 h-6 text-[10px] text-text-secondary rounded border border-border">Cancel</button>
                         <button
                           onClick={() => newCatName.trim() && createCatMutation.mutate({ name: newCatName.trim(), faq_group_id: group.id, bot_group_id: newCatBotGroupId ?? null })}
-                          className="flex-1 h-6 text-[10px] text-black bg-[#00D9FF] rounded font-medium"
+                          className="flex-1 h-6 text-[10px] text-black bg-accent rounded font-medium"
                         >
                           Add
                         </button>
@@ -309,12 +309,12 @@ export default function FAQList() {
                             <button
                               onClick={() => setTreeSelection({ type: 'category', id: cat.id, groupId: group.id })}
                               className={`flex-1 text-left px-2 py-1.5 rounded text-xs truncate transition-colors ${
-                                isCatSelected ? 'bg-[#059669]/10 text-[#059669]' : 'text-[#8a8a8a] hover:bg-[#141414] hover:text-white'
+                                isCatSelected ? 'bg-green/10 text-green' : 'text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
                               }`}
                             >
                               {cat.name}
                               {cat.bot_group_name && (
-                                <span className="ml-1 text-[9px] text-[#8B5CF6] opacity-60">{cat.bot_group_name}</span>
+                                <span className="ml-1 text-[9px] text-purple opacity-60">{cat.bot_group_name}</span>
                               )}
                             </button>
                             <button
@@ -323,7 +323,7 @@ export default function FAQList() {
                                 if (window.confirm(`Delete category "${cat.name}"?`))
                                   deleteCatMutation.mutate(cat.id);
                               }}
-                              className="p-0.5 opacity-0 group-hover/cat:opacity-100 text-[#6a6a6a] hover:text-[#FF4444] transition-all"
+                              className="p-0.5 opacity-0 group-hover/cat:opacity-100 text-text-muted hover:text-red transition-all"
                               title="Delete category"
                             >
                               <Trash2 size={10} />
@@ -332,7 +332,7 @@ export default function FAQList() {
                         );
                       })}
                       {group.categories.length === 0 && (
-                        <p className="text-[10px] text-[#4a4a4a] px-2 py-1">No categories</p>
+                        <p className="text-[10px] text-text-placeholder px-2 py-1">No categories</p>
                       )}
                     </div>
                   )}
@@ -346,12 +346,12 @@ export default function FAQList() {
         <div className="flex-1 p-8 overflow-auto">
           <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <h2 className="text-sm font-semibold text-white">{selectionLabel}</h2>
-              <span className="text-xs text-[#6a6a6a]">{rules.length} rule{rules.length !== 1 ? 's' : ''}</span>
+              <h2 className="text-sm font-semibold text-text-primary">{selectionLabel}</h2>
+              <span className="text-xs text-text-muted">{rules.length} rule{rules.length !== 1 ? 's' : ''}</span>
               <select
                 value={filterReplyMode}
                 onChange={(e) => setFilterReplyMode(e.target.value)}
-                className="h-9 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-xs text-[#FFFFFF] focus:outline-none focus:border-[#00D9FF] appearance-none cursor-pointer"
+                className="h-9 px-3 bg-bg-elevated border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
               >
                 <option value="">All Modes</option>
                 {Object.entries(REPLY_MODE_LABELS).map(([value, label]) => (
@@ -361,7 +361,7 @@ export default function FAQList() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="h-9 px-3 bg-[#141414] border border-[#2f2f2f] rounded-lg text-xs text-[#FFFFFF] focus:outline-none focus:border-[#00D9FF] appearance-none cursor-pointer"
+                className="h-9 px-3 bg-bg-elevated border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent appearance-none cursor-pointer"
               >
                 <option value="">All Status</option>
                 <option value="active">Active</option>
@@ -370,24 +370,24 @@ export default function FAQList() {
             </div>
             <button
               onClick={() => navigate('/faq/new')}
-              className="px-4 py-2 bg-[#00D9FF] text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+              className="px-4 py-2 bg-accent text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
             >
               + New Rule
             </button>
           </div>
 
-          <div className="bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl overflow-hidden">
+          <div className="bg-bg-card border border-border-subtle rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1A1A1A]">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Rule Name</th>
-                  <th className="text-center px-3 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Category</th>
-                  <th className="text-center px-3 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Q</th>
-                  <th className="text-center px-3 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">A</th>
-                  <th className="text-center px-3 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Reply Mode</th>
-                  <th className="text-center px-3 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Hits</th>
-                  <th className="text-center px-3 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Status</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-[#6a6a6a] uppercase tracking-wider font-['JetBrains_Mono']">Actions</th>
+                <tr className="border-b border-border-subtle">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Rule Name</th>
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Category</th>
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Q</th>
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">A</th>
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Reply Mode</th>
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Hits</th>
+                  <th className="text-center px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Status</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider font-['JetBrains_Mono']">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -395,60 +395,60 @@ export default function FAQList() {
                   Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={8} />)
                 ) : rules.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-[#6a6a6a]">
+                    <td colSpan={8} className="px-4 py-8 text-center text-text-muted">
                       No FAQ rules found.
                     </td>
                   </tr>
                 ) : (
                   rules.map((rule) => (
-                    <tr key={rule.id} className="border-b border-[#1A1A1A]/50 last:border-0 hover:bg-[#141414]/50 transition-colors">
-                      <td className="px-5 py-3.5 text-[#FFFFFF] font-medium text-sm">
+                    <tr key={rule.id} className="border-b border-border-subtle/50 last:border-0 hover:bg-bg-elevated/50 transition-colors">
+                      <td className="px-5 py-3.5 text-text-primary font-medium text-sm">
                         {rule.name || `Rule #${rule.id}`}
                       </td>
                       <td className="px-3 py-3.5 text-center">
                         {rule.category_name ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[#059669]/10 text-[#059669] font-['JetBrains_Mono']">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green/10 text-green font-['JetBrains_Mono']">
                             {rule.faq_group_name && <span className="opacity-60 mr-1">{rule.faq_group_name}/</span>}
                             {rule.category_name}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-[#4a4a4a]">&mdash;</span>
+                          <span className="text-[10px] text-text-placeholder">&mdash;</span>
                         )}
                       </td>
                       <td className="px-3 py-3.5 text-center">
-                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#2563EB]/15 text-[#2563EB] text-[10px] font-medium">
+                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-blue/15 text-blue text-[10px] font-medium">
                           {rule.questions.length}
                         </span>
                       </td>
                       <td className="px-3 py-3.5 text-center">
-                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#059669]/15 text-[#059669] text-[10px] font-medium">
+                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green/15 text-green text-[10px] font-medium">
                           {rule.answers.length}
                         </span>
                       </td>
                       <td className="px-3 py-3.5 text-center">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#8B5CF6]/15 text-[#8B5CF6] font-mono">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple/15 text-purple font-mono">
                           {REPLY_MODE_LABELS[rule.reply_mode] || rule.reply_mode}
                         </span>
                       </td>
                       <td className="px-3 py-3.5 text-center">
-                        <span className="font-mono text-[#00D9FF] text-xs">{rule.hit_count}</span>
+                        <span className="font-mono text-accent text-xs">{rule.hit_count}</span>
                       </td>
                       <td className="px-3 py-3.5 text-center">
-                        <span className={`inline-block w-2 h-2 rounded-full ${rule.is_active ? 'bg-[#059669]' : 'bg-[#4a4a4a]'}`} />
+                        <span className={`inline-block w-2 h-2 rounded-full ${rule.is_active ? 'bg-green' : 'bg-text-placeholder'}`} />
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => navigate(`/faq/${rule.id}/edit`)}
-                            className="p-1.5 rounded hover:bg-[#141414] text-[#8a8a8a] hover:text-[#00D9FF] transition-colors"
+                            className="p-1.5 rounded hover:bg-bg-elevated text-text-secondary hover:text-accent transition-colors"
                             title="Edit"
                           >
                             <Pencil size={14} />
                           </button>
                           <button
                             onClick={() => toggleMutation.mutate(rule)}
-                            className={`p-1.5 rounded hover:bg-[#141414] transition-colors ${
-                              rule.is_active ? 'text-[#059669] hover:text-[#FF8800]' : 'text-[#6a6a6a] hover:text-[#059669]'
+                            className={`p-1.5 rounded hover:bg-bg-elevated transition-colors ${
+                              rule.is_active ? 'text-green hover:text-orange' : 'text-text-muted hover:text-green'
                             }`}
                             title={rule.is_active ? 'Disable' : 'Enable'}
                           >
@@ -456,7 +456,7 @@ export default function FAQList() {
                           </button>
                           <button
                             onClick={() => handleDelete(rule)}
-                            className="p-1.5 rounded hover:bg-[#141414] text-[#8a8a8a] hover:text-[#FF4444] transition-colors"
+                            className="p-1.5 rounded hover:bg-bg-elevated text-text-secondary hover:text-red transition-colors"
                             title="Delete"
                           >
                             <Trash2 size={14} />

@@ -169,6 +169,9 @@ User message → FAQ match → Get template with {variable} placeholders → AI 
 - **Audit Logging** &mdash; Automatic tracking of all critical operations
 - **Missed Knowledge Analysis** &mdash; Detects unmatched questions and builds daily frequency rankings (updated at 3 AM)
 - **Global Error Boundary** &mdash; Frontend error isolation preventing full-page crashes
+- **Dual Theme System** &mdash; Dark (default) + Light theme with CSS variable-based tokens, one-click toggle, persisted preference, and `prefers-color-scheme` detection
+- **Glass Morphism Effects** &mdash; `backdrop-blur` glass effects on sidebar, header, and cards (most visible in light theme)
+- **Flowing Gradient Background** &mdash; Animated radial gradient light blobs (light theme only)
 - **Docker One-Click Deployment** &mdash; `docker compose up` to run, with pre-built images published to GHCR
 
 <details>

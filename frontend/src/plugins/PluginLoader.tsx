@@ -16,8 +16,8 @@ function PageLoader() {
   return (
     <div className="flex items-center justify-center h-full">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-[#00D9FF] border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-[#6a6a6a]">Loading plugin...</span>
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm text-text-muted">Loading plugin...</span>
       </div>
     </div>
   );
@@ -130,15 +130,15 @@ export function PluginLoader({
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center p-8">
-          <p className="text-[#FF4444] text-sm mb-2">Failed to load plugin</p>
-          <p className="text-[#6a6a6a] text-xs mb-4">{error.message}</p>
+          <p className="text-red text-sm mb-2">Failed to load plugin</p>
+          <p className="text-text-muted text-xs mb-4">{error.message}</p>
           <button
             onClick={() => {
               failedPlugins.delete(pluginId);
               moduleCache.delete(`${pluginId}/${moduleName}`);
               setError(null);
             }}
-            className="text-xs text-[#00D9FF] hover:underline"
+            className="text-xs text-accent hover:underline"
           >
             Retry
           </button>

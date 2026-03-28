@@ -5,6 +5,21 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-28
+
+### Added
+- **Theme System** — Dual-theme support with Dark (default) and Light mode; all ~1,600 hardcoded hex color values replaced with CSS variable-based Tailwind theme tokens
+- **Theme Toggle** — Sun/Moon toggle button in sidebar with `localStorage` persistence and `prefers-color-scheme` system detection
+- **Glass Morphism Effects** — `backdrop-blur` glass effects on sidebar, header, and cards (most visible in light theme)
+- **Flowing Gradient Background** — Animated radial gradient light blobs behind the layout (light theme only)
+- **Glow Border Utility** — Hover gradient border effect CSS class for cards
+
+### Fixed
+- **Login page infinite refresh loop** — `useActivePlugins()` was called at the top-level `AppRoutes` component (covering both public and authenticated routes); on `/login` it fired `GET /plugins` → 401 → token refresh failed → `window.location.href = '/login'` → full page reload → infinite loop; fixed by gating the query with `enabled: isAuthenticated` and adding a `/login` path guard to the 401 redirect
+- **Colored button contrast in light theme** — 8 instances of `text-text-primary` on `bg-red`/`bg-green`/`bg-blue` buttons changed to `text-white` for proper contrast in both themes
+
+[1.1.0]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.22...v1.1.0
+
 ## [1.0.18] - 2026-03-27
 
 ### Fixed
@@ -23,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Plugin static mount lost on startup** — `ensure_app` only ran in route handlers, so startup activation had corrupted `_app` reference; now fixed at startup before activating any plugins
-- **Cloudflare cached 404 responses** — Added Page Rule to bypass cache for `acp.halotv.top/api/*` path
+- **Cloudflare cached 404 responses** — Added Page Rule to bypass cache for `/api/*` path
 
 [1.0.16]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.0.15...v1.0.16
 
