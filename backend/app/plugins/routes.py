@@ -268,22 +268,25 @@ async def plugin_action(
 async def update_plugin(
     plugin_id: str,
     body: PluginUpdateRequest,
+    request: Request,
     _admin: Annotated[Admin, Depends(require_super_admin)],
 ) -> APIResponse:
     """Update a plugin to a new version."""
     from app.plugins.loader import get_plugin_manager
 
     pm = get_plugin_manager()
+    pm.ensure_app(request.app)
 
     zip_path: Path | None = None
     try:
-        if body.market_url:
-            zip_path = await _download_zip(body.market_url)
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="market_url is required for remote update",
+        download_url = body.market_url
+        if not download_url:
+            from app.config import settings as app_settings
+            download_url = (
+                f"{app_settings.ACP_MARKET_URL}/plugins/{plugin_id}"
+                f"/versions/{body.version}/download"
             )
+        zip_path = await _download_zip(download_url)
 
         info = await pm.update(plugin_id, new_version=body.version, zip_path=zip_path)
         return APIResponse(data=info.model_dump(), message="Plugin updated")
