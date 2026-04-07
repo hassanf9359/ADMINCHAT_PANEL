@@ -5,6 +5,13 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2026-04-07
+
+### Fixed
+- **Plugin callback_query handlers crashed with `TypeError: missing required argument 'bot_db_id'`** — `_start_single_bot` only registered the `inject_bot_context` outer middleware on `dp.message`, leaving `dp.callback_query` (and edited_message, inline_query) without bot context injection. Plugin handlers like `async def on_click(callback: CallbackQuery, bot_db_id: int)` could not be dispatched. Symptom: movie-request 1.0.13 inline confirm/cancel buttons did nothing visible because the handler raised on entry. Now registers the same middleware on `message`, `callback_query`, `edited_message`, and `inline_query` observers.
+
+[1.1.5]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.1.4...v1.1.5
+
 ## [1.1.4] - 2026-04-07
 
 ### Fixed

@@ -233,12 +233,23 @@ class BotManager:
         dp.include_router(_priv_mod.router)
         dp.include_router(_grp_mod.router)
 
-        # Middleware to inject bot_db_id and bot_username into handler kwargs
-        @dp.message.outer_middleware()
-        async def inject_bot_context(handler, event, data):
+        # Middleware to inject bot_db_id and bot_username into handler kwargs.
+        #
+        # Registered on BOTH the message and callback_query observers — plugin
+        # bot handlers may legitimately need bot context for either update
+        # type. Without the callback_query registration, plugin handlers like
+        # ``async def on_click(callback: CallbackQuery, bot_db_id: int)`` raise
+        # ``TypeError: missing 1 required positional argument: 'bot_db_id'``
+        # because aiogram's DI cannot find ``bot_db_id`` in the data dict.
+        async def _inject_bot_context(handler, event, data):
             data["bot_db_id"] = bot_db_id
             data["bot_username"] = username
             return await handler(event, data)
+
+        dp.message.outer_middleware()(_inject_bot_context)
+        dp.callback_query.outer_middleware()(_inject_bot_context)
+        dp.edited_message.outer_middleware()(_inject_bot_context)
+        dp.inline_query.outer_middleware()(_inject_bot_context)
 
         entry = _BotEntry(
             db_id=bot_db_id,
