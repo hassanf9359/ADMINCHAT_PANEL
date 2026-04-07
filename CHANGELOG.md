@@ -5,6 +5,15 @@ All notable changes to the ADMINCHAT Panel project will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-04-07
+
+### Fixed
+- **Plugin bot handlers never attached to dispatcher (CRITICAL)** — `main.py` started `bot_manager.start()` before `plugin_manager.startup()`. Each bot's `_start_single_bot()` called `get_plugin_manager()` which raised `RuntimeError` (singleton not yet created), caught by a silent `except RuntimeError: pass` — so `dp.include_router(pm.handler_mount.master_router)` never ran. Result: NO plugin bot handler was ever in any dispatcher chain. Messages always fell through to private.py's FAQ/RAG catch-all. Fixed by starting plugins before bots.
+- **Multi-bot Router "already attached" error** — When two bots tried to `include_router` the same shared plugin `master_router`, the second one failed because aiogram refused to attach a Router that already had a parent. Fixed by resetting `_parent_router` on the master router and its sub-routers before each `dp.include_router()`.
+- **ORM mapper registry "Multiple classes found" error** — The v1.1.3 `_clear_plugin_orm_tables()` only removed Table objects from `Base.metadata.tables` but not the mapped class entries from `Base.registry`. Re-importing plugin models registered duplicate classes, causing `InvalidRequestError("Multiple classes found for path …")` on string-based relationship lookups. Renamed to `_clear_plugin_orm_state()` and added `Base.registry._dispose_cls()` + legacy `_class_registry` scrubbing.
+
+[1.1.4]: https://github.com/fxxkrlab/ADMINCHAT_PANEL/compare/v1.1.3...v1.1.4
+
 ## [1.1.3] - 2026-04-07
 
 ### Fixed
