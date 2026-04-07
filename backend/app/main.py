@@ -67,18 +67,27 @@ async def lifespan(app: FastAPI):
     await get_redis()
     logger.info("Redis connection initialized")
 
-    # Start bot manager (aiogram dispatchers)
+    # --- Plugin System (must start BEFORE bot manager) ---
+    # If we start bots first, _start_single_bot calls
+    # ``get_plugin_manager()`` which raises RuntimeError because the
+    # plugin manager singleton hasn't been created yet. The bot startup
+    # path catches that exception and silently skips the
+    # ``dp.include_router(pm.handler_mount.master_router)`` step, which
+    # means plugin bot handlers (e.g. movie-request /req) are never
+    # attached to ANY dispatcher. Symptom: /req messages bypass the
+    # plugin and fall through to the FAQ/RAG catch-all.
+    from app.plugins.loader import PluginManager
+    plugin_manager = PluginManager(app)
+    results = await plugin_manager.startup()
+    logger.info("Plugin system started: %s", results)
+
+    # Start bot manager (aiogram dispatchers) — now that plugins are
+    # loaded, _start_single_bot can include each plugin's bot router.
     from app.bot.manager import bot_manager
     try:
         await bot_manager.start()
     except Exception:
         logger.exception("Failed to start BotManager (will continue without bots)")
-
-    # --- Plugin System ---
-    from app.plugins.loader import PluginManager
-    plugin_manager = PluginManager(app)
-    results = await plugin_manager.startup()
-    logger.info("Plugin system started: %s", results)
 
     # Start WebSocket pub/sub listener
     from app.ws.chat import ws_manager

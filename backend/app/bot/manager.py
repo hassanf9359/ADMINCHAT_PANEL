@@ -194,13 +194,41 @@ class BotManager:
         dp.include_router(_cmd_mod.router)
 
         # Include plugin bot handlers BEFORE built-in private/group handlers
-        # so plugins get first chance to handle messages (e.g. /req for movie-request)
+        # so plugins get first chance to handle messages (e.g. /req for movie-request).
+        #
+        # Each bot has its own Dispatcher, but plugin routers are shared
+        # singletons created at activate time. Since aiogram refuses to attach
+        # the same Router to multiple dispatchers, we reset ``_parent_router``
+        # before each include so the second/third bot can re-attach the same
+        # plugin routers.
         from app.plugins.loader import get_plugin_manager
         try:
             pm = get_plugin_manager()
-            dp.include_router(pm.handler_mount.master_router)
         except RuntimeError:
-            pass  # Plugin manager not initialized yet (first startup)
+            logger.warning(
+                "PluginManager not initialized when starting bot %s — "
+                "plugin bot handlers will be missing for this bot. This "
+                "usually means bot_manager.start() was called before "
+                "plugin_manager.startup() in the app lifespan.",
+                bot_db_id,
+            )
+            pm = None
+
+        if pm is not None:
+            master = pm.handler_mount.master_router
+            # Detach the master router (and its sub-routers) from any prior
+            # dispatcher so this dispatcher can adopt them.
+            master._parent_router = None  # noqa: SLF001
+            for sub in list(master.sub_routers):
+                sub._parent_router = None  # noqa: SLF001
+            try:
+                dp.include_router(master)
+            except RuntimeError as exc:
+                logger.warning(
+                    "Could not attach plugin master_router to bot %s dispatcher: %s",
+                    bot_db_id,
+                    exc,
+                )
 
         dp.include_router(_priv_mod.router)
         dp.include_router(_grp_mod.router)
