@@ -27,8 +27,24 @@ const LOAD_TIMEOUT_MS = 10_000;
 const moduleCache = new Map<string, ComponentType>();
 const failedPlugins = new Set<string>();
 
-async function loadRemoteModule(pluginId: string, moduleName: string): Promise<ComponentType> {
+// Track which version each plugin was loaded at so we can bust the cache
+// when a plugin is updated without a full page reload.
+const loadedVersions = new Map<string, string>();
+
+async function loadRemoteModule(pluginId: string, moduleName: string, pluginVersion?: string): Promise<ComponentType> {
   const cacheKey = `${pluginId}/${moduleName}`;
+
+  // If the plugin was updated (version changed), purge stale caches
+  const prevVersion = loadedVersions.get(pluginId);
+  if (pluginVersion && prevVersion && prevVersion !== pluginVersion) {
+    // Clear all cached modules for this plugin
+    for (const key of moduleCache.keys()) {
+      if (key.startsWith(`${pluginId}/`)) moduleCache.delete(key);
+    }
+    delete (window as any)[`__acp_plugin_${pluginId}`];
+    failedPlugins.delete(pluginId);
+  }
+
   if (moduleCache.has(cacheKey)) {
     return moduleCache.get(cacheKey)!;
   }
@@ -40,7 +56,9 @@ async function loadRemoteModule(pluginId: string, moduleName: string): Promise<C
 
   // Plugin static files served under /api/v1/p-static/{id}/
   // Separate from /api/v1/plugins/ to avoid FastAPI route conflicts
-  const remoteUrl = `/api/v1/p-static/${pluginId}/dist/remoteEntry.js`;
+  // Append version as cache-buster so browser fetches the new bundle after updates
+  const cacheBuster = pluginVersion ? `?v=${pluginVersion}` : `?t=${Date.now()}`;
+  const remoteUrl = `/api/v1/p-static/${pluginId}/dist/remoteEntry.js${cacheBuster}`;
 
   await new Promise<void>((resolve, reject) => {
     if (window[`__acp_plugin_${pluginId}`]) {
@@ -90,6 +108,7 @@ async function loadRemoteModule(pluginId: string, moduleName: string): Promise<C
 
   const component = mod.default as ComponentType;
   moduleCache.set(cacheKey, component);
+  if (pluginVersion) loadedVersions.set(pluginId, pluginVersion);
   return component;
 }
 
@@ -97,10 +116,12 @@ export function PluginLoader({
   pluginId,
   pluginName,
   moduleName = './pages/Main',
+  pluginVersion,
 }: {
   pluginId: string;
   pluginName?: string;
   moduleName?: string;
+  pluginVersion?: string;
 }) {
   const [Component, setComponent] = useState<ComponentType | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -112,7 +133,7 @@ export function PluginLoader({
     setComponent(null);
     setError(null);
 
-    loadRemoteModule(pluginId, moduleName)
+    loadRemoteModule(pluginId, moduleName, pluginVersion)
       .then(comp => {
         if (!cancelled) setComponent(() => comp);
       })
@@ -124,7 +145,7 @@ export function PluginLoader({
       });
 
     return () => { cancelled = true; };
-  }, [pluginId, moduleName]);
+  }, [pluginId, moduleName, pluginVersion]);
 
   if (error) {
     return (

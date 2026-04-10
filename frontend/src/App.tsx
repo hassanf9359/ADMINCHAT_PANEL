@@ -84,6 +84,7 @@ function AppRoutes() {
         path: item.path,
         pluginId: p.plugin_id,
         pluginName: p.name,
+        pluginVersion: p.version,
       }))
   );
 
@@ -122,6 +123,7 @@ function AppRoutes() {
               <PluginLoader
                 pluginId={route.pluginId}
                 pluginName={route.pluginName}
+                pluginVersion={route.pluginVersion}
               />
             }
           />

@@ -436,6 +436,7 @@ export default function Settings() {
       key: `plg_${p.plugin_id}_${tab.key}`,
       label: tab.label,
       pluginId: p.plugin_id,
+      pluginVersion: p.version,
       module: tab.module,
     }))
   );
@@ -723,6 +724,7 @@ export default function Settings() {
                   key={t.key}
                   pluginId={t.pluginId}
                   moduleName={t.module}
+                  pluginVersion={t.pluginVersion}
                 />
               ))
             }
