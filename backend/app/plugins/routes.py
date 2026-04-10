@@ -322,6 +322,17 @@ async def update_plugin_config(
     await db.flush()
     await db.refresh(plugin)
 
+    # Invalidate the plugin's in-memory config cache so it picks up
+    # the new values immediately (e.g. webhook URL used at runtime).
+    try:
+        from app.plugins.loader import get_plugin_manager
+        pm = get_plugin_manager()
+        ctx = pm.get_context(plugin_id)
+        if ctx:
+            ctx.config.invalidate_cache()
+    except Exception:
+        pass  # best-effort — plugin may not be loaded yet
+
     return APIResponse(
         data=_plugin_to_info(plugin).model_dump(),
         message="Plugin config updated",
